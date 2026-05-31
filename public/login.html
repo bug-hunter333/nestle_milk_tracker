@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign In | Nestlé Smart Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            serif: ['Cormorant Garamond', 'serif'],
+          },
+          colors: {
+            nestle: {
+              blue: '#005696',
+              deep: '#003d6b',
+              light: '#e8f3fb',
+            }
+          },
+          backdropBlur: { glass: '20px' },
+          animation: {
+            'fade-up': 'fadeUp 0.7s ease forwards',
+            'float': 'float 6s ease-in-out infinite',
+            'float-slow': 'float 9s ease-in-out infinite 1.5s',
+            'pulse-ring': 'pulseRing 3s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            float: {
+              '0%,100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-14px)' },
+            },
+            pulseRing: {
+              '0%,100%': { opacity: '0.4', transform: 'scale(1)' },
+              '50%': { opacity: '0.08', transform: 'scale(1.3)' },
+            },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.09);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        0 32px 80px rgba(0, 0, 0, 0.45),
+        0 0 0 1px rgba(255,255,255,0.06) inset,
+        0 1px 0 rgba(255,255,255,0.25) inset;
+    }
+
+    .glass-input {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      color: white;
+      transition: all 0.25s ease;
+    }
+    .glass-input::placeholder { color: rgba(255,255,255,0.38); }
+    .glass-input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(255, 255, 255, 0.42);
+      box-shadow: 0 0 0 3px rgba(0, 86, 150, 0.35);
+    }
+
+    .btn-signin {
+      background: linear-gradient(135deg, #005696 0%, #0070c0 100%);
+      box-shadow: 0 8px 32px rgba(0, 86, 150, 0.55), 0 1px 0 rgba(255,255,255,0.15) inset;
+      transition: all 0.25s ease;
+      position: relative; overflow: hidden;
+    }
+    .btn-signin::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .btn-signin:hover { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(0, 86, 150, 0.7); }
+    .btn-signin:hover::before { opacity: 1; }
+    .btn-signin:active { transform: translateY(0); }
+
+    /* Orbs */
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none;
+    }
+
+    /* Shimmer on card top edge */
+    .card-shimmer {
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+    }
+
+    /* Eye toggle */
+    .eye-toggle { cursor: pointer; color: rgba(255,255,255,0.4); transition: color 0.2s; }
+    .eye-toggle:hover { color: rgba(255,255,255,0.75); }
+
+    .stagger-1 { animation: fadeUp 0.7s 0.1s ease both; }
+    .stagger-2 { animation: fadeUp 0.7s 0.22s ease both; }
+    .stagger-3 { animation: fadeUp 0.7s 0.34s ease both; }
+    .stagger-4 { animation: fadeUp 0.7s 0.46s ease both; }
+    .stagger-5 { animation: fadeUp 0.7s 0.58s ease both; }
+    .stagger-6 { animation: fadeUp 0.7s 0.7s ease both; }
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+
+<body class="min-h-screen overflow-hidden relative flex items-center justify-center"
+  style="background: radial-gradient(ellipse at 20% 30%, #001e3c 0%, #000d1a 60%, #001428 100%);">
+
+  <!-- Ambient orbs -->
+  <div class="orb w-96 h-96 animate-float" style="background:rgba(0,86,150,0.28);top:-80px;left:-120px;"></div>
+  <div class="orb w-80 h-80 animate-float-slow" style="background:rgba(0,100,180,0.18);bottom:-60px;right:-80px;"></div>
+  <div class="orb w-64 h-64" style="background:rgba(0,160,255,0.10);top:50%;left:60%;filter:blur(100px);animation:float 12s ease-in-out infinite 3s;"></div>
+
+  <!-- Fine grid texture -->
+  <div class="absolute inset-0 opacity-5" style="background-image:linear-gradient(rgba(255,255,255,0.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.4) 1px,transparent 1px);background-size:40px 40px;"></div>
+
+  <!-- Card wrapper -->
+  <div class="relative z-10 w-full max-w-md px-4">
+
+    <!-- Brand header -->
+    <div class="text-center mb-8 stagger-1">
+      <div class="inline-flex items-center gap-2 mb-4">
+        <div class="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center">
+          <!-- Nestlé-style nest icon -->
+          <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5 5.2 3 6.5 3 9c0 2 1.5 3.5 3.5 3.5H17c2 0 4-1.5 4-4 0-2-1.5-3.5-3.5-3.5-.5 0-1 .1-1.5.3C15 3.2 13.5 2 12 2zm0 12v8"/><circle cx="12" cy="20" r="1.5"/></svg>
+        </div>
+        <span class="text-white/60 text-xs tracking-[0.22em] uppercase font-light">Nestlé Lanka PLC</span>
+      </div>
+      <h1 class="font-serif text-4xl font-light text-white leading-tight">Welcome Back</h1>
+      <p class="text-white/45 text-sm mt-2 tracking-wide font-light">Sign in to Smart Rural Logistics</p>
+    </div>
+
+    <!-- Glass Card -->
+    <div class="glass-card rounded-[20px] p-8 relative stagger-2">
+      <div class="card-shimmer"></div>
+
+      <!-- Email field -->
+      <div class="mb-4 stagger-3">
+        <label class="block text-white/55 text-xs tracking-[0.14em] uppercase mb-2 font-medium">Corporate Email</label>
+        <div class="relative">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg class="w-4 h-4 text-white/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+            </svg>
+          </div>
+          <input id="userEmail" type="email" placeholder="you@nestle.com"
+            class="glass-input w-full pl-11 pr-4 py-3.5 rounded-xl text-sm font-light">
+        </div>
+      </div>
+
+      <!-- Password field -->
+      <div class="mb-6 stagger-4">
+        <label class="block text-white/55 text-xs tracking-[0.14em] uppercase mb-2 font-medium">Password</label>
+        <div class="relative">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg class="w-4 h-4 text-white/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <input id="userPass" type="password" placeholder="••••••••"
+            class="glass-input w-full pl-11 pr-12 py-3.5 rounded-xl text-sm font-light">
+          <button class="eye-toggle absolute right-4 top-1/2 -translate-y-1/2" onclick="togglePwd('userPass','eyeIcon')" tabindex="-1">
+            <svg id="eyeIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="flex justify-end mt-2">
+          <button class="text-white/35 text-xs hover:text-white/60 transition-colors font-light tracking-wide">Forgot password?</button>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <p id="error-msg" class="text-red-400 text-xs text-center mb-4 min-h-[16px] font-medium"></p>
+
+      <!-- Sign in button -->
+      <button onclick="login()" class="btn-signin stagger-5 w-full py-4 rounded-xl text-white text-sm font-semibold tracking-[0.1em] uppercase flex items-center justify-center gap-2.5">
+        <span id="btnText">Sign In to Dashboard</span>
+        <svg id="btnArrow" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+        </svg>
+        <svg id="btnSpinner" class="w-4 h-4 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </button>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-3 my-6 stagger-6">
+        <div class="flex-1 h-px bg-white/10"></div>
+        <span class="text-white/25 text-xs tracking-widest">OR</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+
+      <!-- Register link -->
+      <p class="text-center text-white/40 text-sm font-light stagger-6">
+        New to the platform?
+        <a href="register.html" class="text-sky-400 hover:text-sky-300 font-medium ml-1 transition-colors">Create an account →</a>
+      </p>
+    </div>
+
+    <!-- Footer note -->
+    <p class="text-center text-white/20 text-xs mt-6 tracking-wide stagger-6">
+      Nestlé Lanka PLC · Secure Logistics Portal · v3.2
+    </p>
+  </div>
+
+  <script>
+    function togglePwd(inputId, iconId) {
+      const inp = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      const isHidden = inp.type === 'password';
+      inp.type = isHidden ? 'text' : 'password';
+      icon.innerHTML = isHidden
+        ? `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>`
+        : `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
+    }
+
+    function login() {
+      const email = document.getElementById('userEmail').value.trim();
+      const pass  = document.getElementById('userPass').value;
+      const err   = document.getElementById('error-msg');
+      const txt   = document.getElementById('btnText');
+      const spin  = document.getElementById('btnSpinner');
+      const arrow = document.getElementById('btnArrow');
+
+      if (!email || !pass) { err.textContent = 'Please fill in all fields.'; return; }
+      err.textContent = '';
+      txt.textContent = 'Signing in…';
+      spin.classList.remove('hidden');
+      arrow.classList.add('hidden');
+
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+          .then(cred => {
+            const uid = cred.user.uid;
+            firebase.database().ref('users/' + uid + '/role').once('value').then(snap => {
+              const role = snap.val();
+              if (role === 'manager') location.href = 'dashboard.html';
+              else if (role === 'center') location.href = 'center.html';
+              else if (role === 'chilling_center') location.href = 'collection.html';
+              else location.href = 'driver.html';
+            });
+          })
+          .catch(e => {
+            err.textContent = e.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)/, '');
+            txt.textContent = 'Sign In to Dashboard';
+            spin.classList.add('hidden');
+            arrow.classList.remove('hidden');
+          });
+      } else {
+        // Demo mode — no Firebase
+        setTimeout(() => {
+          err.textContent = 'Firebase not configured. Running in demo mode.';
+          txt.textContent = 'Sign In to Dashboard';
+          spin.classList.add('hidden');
+          arrow.classList.remove('hidden');
+        }, 1200);
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  </script>
+  <script src="auth.js" onerror="console.warn('auth.js not found — demo mode')"></script>
+</body>
+</html>

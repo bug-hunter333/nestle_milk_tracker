@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QA Analytics | Nestlé Smart Logistics</title>
+  <meta name="description" content="Nestlé Smart Logistics QA Intelligence — Weekly collection volume, cold chain compliance, and audit ledger.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans:['DM Sans','sans-serif'], serif:['Cormorant Garamond','serif'] },
+          animation: {
+            'float':     'float 8s ease-in-out infinite',
+            'float-slow':'float 11s ease-in-out infinite 3s',
+            'fade-up':   'fadeUp .6s ease both',
+            'count-up':  'countUp .8s ease both',
+          },
+          keyframes: {
+            float:    {'0%,100%':{transform:'translateY(0)'},'50%':{transform:'translateY(-18px)'}},
+            fadeUp:   {'0%':{opacity:'0',transform:'translateY(14px)'},'100%':{opacity:'1',transform:'none'}},
+            countUp:  {'0%':{opacity:'0',transform:'translateY(8px)'},'100%':{opacity:'1',transform:'none'}},
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --accent-blue:  #60a5fa;
+      --accent-green: #4ade80;
+      --accent-amber: #fbbf24;
+      --accent-red:   #f87171;
+    }
+    body { background: radial-gradient(ellipse at 20% 10%, #001e3c 0%, #000d1a 60%, #001020 100%); font-family:'DM Sans',sans-serif; color:rgba(255,255,255,.92); min-height:100vh; }
+    .glass { background:rgba(255,255,255,.06); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4); border:1px solid rgba(255,255,255,.12); }
+    .glass-dark { background:rgba(0,8,20,.88); backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px); border:1px solid rgba(255,255,255,.1); }
+    .shimmer { position:relative; }
+    .shimmer::before { content:''; position:absolute; top:0; left:10%; right:10%; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent); pointer-events:none; z-index:1; }
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:2px; }
+
+    /* Stat cards */
+    .stat-card { transition: transform .25s, box-shadow .25s; }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,0,0,.4); }
+
+    /* Table rows */
+    .audit-row { border-bottom:1px solid rgba(255,255,255,.05); transition:background .18s; }
+    .audit-row:last-child { border-bottom:none; }
+    .audit-row:hover { background:rgba(255,255,255,.04); }
+
+    /* QA Incident badge pulse */
+    @keyframes incidentPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
+    .incident-badge { animation: incidentPulse 2s ease-in-out infinite; }
+
+    /* Chart containers */
+    .chart-wrap { position:relative; width:100%; }
+
+    /* Search input */
+    .search-input { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.88); outline:none; transition:border-color .2s; }
+    .search-input:focus { border-color:rgba(96,165,250,.45); background:rgba(96,165,250,.05); }
+    .search-input::placeholder { color:rgba(255,255,255,.25); }
+
+    /* Back button */
+    .back-btn { transition:all .2s; }
+    .back-btn:hover { background:rgba(255,255,255,.1); transform:translateX(-2px); }
+
+    /* Print styles */
+    @media print {
+      body { background:#fff !important; color:#000 !important; }
+      .no-print { display:none !important; }
+      .glass, .glass-dark { background:#f9fafb !important; border:1px solid #e5e7eb !important; backdrop-filter:none !important; }
+      canvas { max-width:100% !important; }
+    }
+
+    /* Donut chart label */
+    .donut-label { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+
+    /* Live row flash — new collection events entering the ledger in real time */
+    @keyframes rowFlash { 0%{background:rgba(96,165,250,.22);outline:1px solid rgba(96,165,250,.5)} 80%{background:rgba(96,165,250,.08);outline:1px solid rgba(96,165,250,.15)} 100%{background:transparent;outline:none} }
+    .row-live { animation: rowFlash 2.4s ease-out both; }
+
+    /* Pulsing LIVE badge */
+    @keyframes livePing { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+    .live-badge { animation: livePing 1.6s ease-in-out infinite; }
+
+    /* Responsive grid */
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      .charts-grid { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- BG Orbs -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="absolute rounded-full animate-float" style="width:500px;height:500px;background:rgba(0,86,150,.18);top:-150px;right:-100px;filter:blur(100px);"></div>
+  <div class="absolute rounded-full animate-float-slow" style="width:350px;height:350px;background:rgba(0,120,200,.12);bottom:-80px;left:-80px;filter:blur(90px);"></div>
+  <div class="absolute rounded-full" style="width:250px;height:250px;background:rgba(34,197,94,.07);top:45%;left:42%;filter:blur(90px);"></div>
+  <div class="absolute inset-0 opacity-[.03]" style="background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);background-size:40px 40px;"></div>
+</div>
+
+<div class="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 pb-16 pt-0">
+
+  <!-- ── NAV / HEADER ────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-50 flex items-center justify-between py-4 mb-8 no-print" style="background:rgba(0,8,20,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.08);margin-left:-1.5rem;margin-right:-1.5rem;padding-left:1.5rem;padding-right:1.5rem;">
+    <div class="flex items-center gap-3">
+      <button onclick="window.location.href='dashboard.html'" class="back-btn flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[11px] tracking-[.08em] uppercase" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.55);">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+        Dashboard
+      </button>
+      <div class="h-4 w-px" style="background:rgba(255,255,255,.12);"></div>
+      <div>
+        <div class="text-[9px] tracking-[.2em] uppercase" style="color:rgba(255,255,255,.35);">Nestlé Lanka PLC</div>
+        <div class="text-[12px] font-semibold tracking-[.06em]">QA Intelligence</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="liveChip" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px]" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;">
+        <div class="w-1.5 h-1.5 rounded-full" style="background:#22c55e;box-shadow:0 0 5px #22c55e;"></div>
+        Live
+      </div>
+      <button onclick="window.print()" class="no-print flex items-center gap-2 px-4 py-2 rounded-[10px] text-[12px] font-semibold" style="background:linear-gradient(135deg,#005696,#0070c0);color:white;box-shadow:0 4px 16px rgba(0,86,150,.35);">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        Export PDF
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── PAGE TITLE ────────────────────────────────────────────── -->
+  <div class="mb-8 animate-fade-up">
+    <div class="text-[9px] tracking-[.25em] uppercase mb-1" style="color:rgba(255,255,255,.35);">Weekly Audit Report</div>
+    <h1 class="font-serif text-[36px] sm:text-[44px] font-light leading-tight">QA Analytics <span style="color:#60a5fa;">Centre</span></h1>
+    <p class="text-[13px] mt-1" style="color:rgba(255,255,255,.45);">Cold chain compliance · Volume tracking · Collection efficiency · Audit ledger</p>
+  </div>
+
+  <!-- ── KPI STAT CARDS ─────────────────────────────────────── -->
+  <div class="stats-grid grid grid-cols-4 gap-3 mb-8 animate-fade-up" style="animation-delay:.08s">
+
+    <div class="stat-card glass shimmer rounded-[20px] p-5 relative overflow-hidden">
+      <div class="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3" style="background:rgba(96,165,250,.12);">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+      </div>
+      <div class="text-[8px] tracking-[.18em] uppercase mb-1" style="color:rgba(255,255,255,.35);">Weekly Volume</div>
+      <div id="kpiVolume" class="font-serif text-[26px] font-light" style="color:#60a5fa;">— L</div>
+      <div id="kpiVolumeLabel" class="text-[10px] mt-0.5" style="color:rgba(255,255,255,.35);">Loading…</div>
+    </div>
+
+    <div class="stat-card glass shimmer rounded-[20px] p-5 relative overflow-hidden">
+      <div class="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3" style="background:rgba(34,197,94,.12);">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#4ade80" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+      </div>
+      <div class="text-[8px] tracking-[.18em] uppercase mb-1" style="color:rgba(255,255,255,.35);">Avg Temperature</div>
+      <div id="kpiTemp" class="font-serif text-[26px] font-light" style="color:#4ade80;">— °C</div>
+      <div id="kpiTempLabel" class="text-[10px] mt-0.5" style="color:rgba(255,255,255,.35);">Cold chain status</div>
+    </div>
+
+    <div class="stat-card glass shimmer rounded-[20px] p-5 relative overflow-hidden">
+      <div class="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3" style="background:rgba(251,191,36,.12);">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#fbbf24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div class="text-[8px] tracking-[.18em] uppercase mb-1" style="color:rgba(255,255,255,.35);">QA Compliance</div>
+      <div id="kpiCompliance" class="font-serif text-[26px] font-light" style="color:#fbbf24;">—%</div>
+      <div id="kpiIncidents" class="text-[10px] mt-0.5" style="color:rgba(255,255,255,.35);">Checking incidents…</div>
+    </div>
+
+    <div class="stat-card glass shimmer rounded-[20px] p-5 relative overflow-hidden">
+      <div class="w-8 h-8 rounded-[10px] flex items-center justify-center mb-3" style="background:rgba(34,211,238,.12);">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#22d3ee" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253M3 12c0 .778.099 1.533.284 2.253"/></svg>
+      </div>
+      <div class="text-[8px] tracking-[.18em] uppercase mb-1" style="color:rgba(255,255,255,.35);">Active Centers</div>
+      <div id="kpiCenters" class="font-serif text-[26px] font-light" style="color:#22d3ee;">5</div>
+      <div class="text-[10px] mt-0.5" style="color:rgba(255,255,255,.35);">Collection sites online</div>
+    </div>
+
+  </div>
+
+  <!-- ── CHARTS ROW ─────────────────────────────────────────── -->
+  <div class="charts-grid grid grid-cols-2 gap-5 mb-8 animate-fade-up" style="animation-delay:.16s">
+
+    <!-- Volume Bar Chart -->
+    <div class="glass shimmer rounded-[20px] p-6 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="text-[9px] tracking-[.2em] uppercase" style="color:rgba(255,255,255,.35);">Supply Consistency</div>
+          <div class="text-[15px] font-semibold mt-0.5">Weekly Volume Collection</div>
+        </div>
+        <div class="text-[9px] px-2.5 py-1 rounded-full" style="background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);color:#93c5fd;">Liters / Day</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="volumeChart" height="220"></canvas>
+      </div>
+      <div class="flex items-center gap-3 mt-4 text-[10px]" style="color:rgba(255,255,255,.4);">
+        <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:#3b82f6;"></span>Collected</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-sm" style="background:rgba(255,255,255,.12);"></span>Target</span>
+      </div>
+    </div>
+
+    <!-- Temperature Line Chart -->
+    <div class="glass shimmer rounded-[20px] p-6 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div class="text-[9px] tracking-[.2em] uppercase" style="color:rgba(255,255,255,.35);">Cold Chain Monitoring</div>
+          <div class="text-[15px] font-semibold mt-0.5">Temperature Stability Audit</div>
+        </div>
+        <div id="tempBadge" class="text-[9px] px-2.5 py-1 rounded-full" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#4ade80;">✓ Within Range</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="tempChart" height="220"></canvas>
+      </div>
+      <div class="flex items-center gap-3 mt-4 text-[10px]" style="color:rgba(255,255,255,.4);">
+        <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-1.5 rounded-full" style="background:#4ade80;"></span>Temp °C</span>
+        <span class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-px" style="background:#ef4444;"></span>4°C Limit</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COLLECTION SUCCESS RATE ────────────────────────────── -->
+  <div class="glass shimmer rounded-[20px] p-6 mb-8 animate-fade-up" style="animation-delay:.22s">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <div class="text-[9px] tracking-[.2em] uppercase" style="color:rgba(255,255,255,.35);">Logistics Efficiency</div>
+        <div class="text-[15px] font-semibold mt-0.5">Collection Success Rate — Scheduled vs. Actual</div>
+      </div>
+      <div id="successOverallBadge" class="text-[11px] font-semibold px-3 py-1.5 rounded-full" style="background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.3);">Excellent</div>
+    </div>
+
+    <!-- Per-site success bars -->
+    <div id="successGrid" class="grid grid-cols-1 sm:grid-cols-5 gap-4">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- Totals row -->
+    <div class="mt-6 pt-5 flex flex-wrap gap-6" style="border-top:1px solid rgba(255,255,255,.07);">
+      <div>
+        <div class="text-[9px] tracking-[.15em] uppercase mb-1" style="color:rgba(255,255,255,.3);">Total Scheduled</div>
+        <div id="totalScheduled" class="text-[20px] font-semibold" style="color:rgba(255,255,255,.85);">— L</div>
+      </div>
+      <div>
+        <div class="text-[9px] tracking-[.15em] uppercase mb-1" style="color:rgba(255,255,255,.3);">Total Collected</div>
+        <div id="totalCollected" class="text-[20px] font-semibold" style="color:#4ade80;">— L</div>
+      </div>
+      <div>
+        <div class="text-[9px] tracking-[.15em] uppercase mb-1" style="color:rgba(255,255,255,.3);">Overall Rate</div>
+        <div id="overallRate" class="text-[20px] font-semibold" style="color:#60a5fa;">—%</div>
+      </div>
+      <div>
+        <div class="text-[9px] tracking-[.15em] uppercase mb-1" style="color:rgba(255,255,255,.3);">QA Incidents</div>
+        <div id="totalIncidentsLabel" class="text-[20px] font-semibold" style="color:#f87171;">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AUDIT LEDGER TABLE ─────────────────────────────────── -->
+  <div class="glass-dark rounded-[20px] overflow-hidden animate-fade-up" style="animation-delay:.28s">
+
+    <!-- Table header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4" style="border-bottom:1px solid rgba(255,255,255,.08);">
+      <div class="flex items-center gap-3">
+        <div>
+          <div class="text-[9px] tracking-[.2em] uppercase" style="color:rgba(255,255,255,.35);">Permanent Record</div>
+          <div class="text-[15px] font-semibold mt-0.5">Audit Ledger</div>
+        </div>
+        <span id="liveBadge" class="live-badge hidden text-[9px] font-semibold tracking-[.1em] uppercase px-2 py-0.5 rounded-full" style="background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3);">● LIVE</span>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <div id="ledgerCount" class="text-[10px] px-2.5 py-1 rounded-full" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);">0 records</div>
+        <!-- Search -->
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,.35)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+          <input id="auditSearch" type="text" placeholder="Search location, driver…" class="search-input pl-8 pr-4 py-2 rounded-[10px] text-[12px] w-[200px]">
+        </div>
+        <!-- Filter -->
+        <select id="auditFilter" class="search-input px-3 py-2 rounded-[10px] text-[12px] cursor-pointer">
+          <option value="all">All Records</option>
+          <option value="normal">✓ Normal Only</option>
+          <option value="incident">⚠ QA Incidents</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left" style="border-collapse:collapse;">
+        <thead>
+          <tr style="background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
+            <th class="px-5 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">Timestamp</th>
+            <th class="px-4 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">Collection Centre</th>
+            <th class="px-4 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">Driver</th>
+            <th class="px-4 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">Volume</th>
+            <th class="px-4 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">Final Temp</th>
+            <th class="px-4 py-3 text-[9px] font-semibold tracking-[.15em] uppercase" style="color:rgba(255,255,255,.3);">QA Status</th>
+          </tr>
+        </thead>
+        <tbody id="auditBody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+
+      <!-- Empty / Loading state -->
+      <div id="auditEmpty" class="flex flex-col items-center justify-center py-16 gap-2">
+        <svg class="w-10 h-10 mb-1" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,.15)" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/></svg>
+        <div class="text-[13px]" style="color:rgba(255,255,255,.25);">Connecting to Firebase…</div>
+        <div class="text-[11px]" style="color:rgba(255,255,255,.15);">Verified deliveries will appear here.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────── -->
+  <div class="text-center mt-10 text-[10px]" style="color:rgba(255,255,255,.18);">
+    Nestlé Smart Logistics v3.2 · QA Intelligence Module · Data refreshes in real-time from Firebase
+  </div>
+
+</div><!-- /max-w wrapper -->
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE + CHART.JS LOGIC
+════════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+// ── Firebase config ──────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDtTMrEGjIJ5aJYNJQnARXxXrJDnEUt4vM",
+  authDomain:        "rural-logistics-app.firebaseapp.com",
+  databaseURL:       "https://rural-logistics-app-default-rtdb.firebaseio.com",
+  projectId:         "rural-logistics-app",
+  storageBucket:     "rural-logistics-app.firebasestorage.app",
+  messagingSenderId: "684830139102",
+  appId:             "1:684830139102:web:850e4e5802aac76335584f"
+};
+const app  = initializeApp(firebaseConfig);
+const db   = getDatabase(app);
+const auth = getAuth(app);
+
+// Auth guard — allow anonymous sign-in on localhost for testing
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
+    if (isLocal) {
+      signInAnonymously(auth).catch(() => {});
+    } else {
+      window.location.href = 'index.html';
+    }
+  }
+});
+
+// ── Collection site definitions (expected volumes) ────────────
+const SITES = [
+  { id:'apiit',    name:'APIIT Sri Lanka',       expected:85  },
+  { id:'townhall', name:'Colombo Town Hall',      expected:120 },
+  { id:'kaduwela', name:'Kaduwela Rural Farm',    expected:210 },
+  { id:'hanwella', name:'Hanwella Dairy Co-op',   expected:340 },
+  { id:'malabe',   name:'Malabe Collection Hub',  expected:180 },
+];
+const TOTAL_EXPECTED = SITES.reduce((s,x) => s + x.expected, 0); // 935
+
+// ── Global master record list (set by Firebase listener) ─────
+let allRecords = [];
+
+// ── Chart.js global defaults ──────────────────────────────────
+Chart.defaults.color = 'rgba(255,255,255,.45)';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── Helper: dark transparent grid ────────────────────────────
+const gridOpts = {
+  color: 'rgba(255,255,255,.06)',
+  drawBorder: false,
+};
+
+// ══════════════════════════════════════════════════════════════
+//  1. VOLUME BAR CHART
+// ══════════════════════════════════════════════════════════════
+const volCtx = document.getElementById('volumeChart').getContext('2d');
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+const volChart = new Chart(volCtx, {
+  type: 'bar',
+  data: {
+    labels: DAY_LABELS,
+    datasets: [
+      {
+        label: 'Collected (L)',
+        data: [0,0,0,0,0,0,0],
+        backgroundColor: (ctx) => {
+          const v = ctx.raw || 0;
+          const gradient = ctx.chart.ctx.createLinearGradient(0,0,0,220);
+          gradient.addColorStop(0, 'rgba(96,165,250,.9)');
+          gradient.addColorStop(1, 'rgba(59,130,246,.25)');
+          return gradient;
+        },
+        borderColor: 'rgba(96,165,250,.7)',
+        borderWidth: 1.5,
+        borderRadius: 8,
+        borderSkipped: false,
+      },
+      {
+        label: 'Target (L)',
+        data: Array(7).fill(TOTAL_EXPECTED),
+        type: 'line',
+        borderColor: 'rgba(255,255,255,.12)',
+        borderDash: [5,5],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(0,8,20,.95)',
+        borderColor: 'rgba(255,255,255,.12)',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { weight:'600', size:12 },
+        callbacks: {
+          label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw} L`
+        }
+      },
+    },
+    scales: {
+      x: { grid: gridOpts, ticks: { color:'rgba(255,255,255,.4)' } },
+      y: { grid: gridOpts, ticks: { color:'rgba(255,255,255,.4)', callback: v => v+' L' }, beginAtZero:true }
+    }
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  2. TEMPERATURE LINE CHART
+// ══════════════════════════════════════════════════════════════
+const tempCtx = document.getElementById('tempChart').getContext('2d');
+
+const tempChart = new Chart(tempCtx, {
+  type: 'line',
+  data: {
+    labels: ['—'],
+    datasets: [
+      {
+        label: 'Milk Temp °C',
+        data: [0],
+        borderColor: '#4ade80',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: (ctx) => {
+          const v = parseFloat(ctx.raw);
+          return v > 4.0 ? '#ef4444' : '#4ade80';
+        },
+        pointBorderColor: 'rgba(0,8,20,.5)',
+        pointBorderWidth: 1.5,
+        fill: {
+          target: 'origin',
+          above: 'rgba(74,222,128,.07)',
+        },
+        tension: 0.38,
+      },
+      {
+        // 4°C critical threshold line
+        label: '4°C Limit',
+        data: [],
+        borderColor: 'rgba(239,68,68,.55)',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+        tension: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(0,8,20,.95)',
+        borderColor: 'rgba(255,255,255,.12)',
+        borderWidth: 1,
+        padding: 12,
+        callbacks: {
+          label: (ctx) => {
+            const v = parseFloat(ctx.raw);
+            if (ctx.datasetIndex === 1) return null;
+            return ` ${v.toFixed(1)}°C ${v > 4.0 ? '⚠ QA INCIDENT' : '✓ Normal'}`;
+          }
+        }
+      },
+    },
+    scales: {
+      x: { grid: gridOpts, ticks: { color:'rgba(255,255,255,.4)', maxTicksLimit:8, maxRotation:45 } },
+      y: {
+        grid: gridOpts,
+        ticks: { color:'rgba(255,255,255,.4)', callback: v => v+'°C' },
+        min: 1.5,
+        max: 5.5,
+        suggestedMin: 1.5,
+        suggestedMax: 5.5,
+      }
+    }
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+//  3. COLLECTION SUCCESS RATE BARS
+// ══════════════════════════════════════════════════════════════
+function renderSuccessGrid(volumeByLocation) {
+  const grid = document.getElementById('successGrid');
+  grid.innerHTML = '';
+
+  let totalCollected = 0;
+  SITES.forEach(site => {
+    const actual   = volumeByLocation[site.name] || 0;
+    const expected = site.expected;
+    const pct      = Math.min(100, Math.round((actual / expected) * 100));
+    totalCollected += actual;
+
+    const color = pct >= 90 ? '#4ade80' : pct >= 60 ? '#fbbf24' : '#f87171';
+    const bg    = pct >= 90 ? 'rgba(34,197,94,.12)' : pct >= 60 ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)';
+
+    const card = document.createElement('div');
+    card.className = 'rounded-[14px] p-4';
+    card.style.cssText = `background:${bg};border:1px solid ${color}30;`;
+    card.innerHTML = `
+      <div class="text-[11px] font-medium mb-1 truncate" title="${site.name}">${site.name.split(' ').slice(0,2).join(' ')}</div>
+      <div class="font-serif text-[22px] font-light mb-2" style="color:${color};">${pct}%</div>
+      <div class="h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,.08);">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 1s ease;"></div>
+      </div>
+      <div class="flex justify-between mt-1.5 text-[9px]" style="color:rgba(255,255,255,.35);">
+        <span>${actual} L collected</span><span>/ ${expected} L target</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  const overallPct = Math.round((totalCollected / TOTAL_EXPECTED) * 100);
+  document.getElementById('totalScheduled').textContent = TOTAL_EXPECTED + ' L';
+  document.getElementById('totalCollected').textContent = totalCollected + ' L';
+  document.getElementById('overallRate').textContent    = overallPct + '%';
+
+  const badge = document.getElementById('successOverallBadge');
+  if (overallPct >= 90) { badge.textContent='Excellent'; badge.style.color='#4ade80'; badge.style.borderColor='rgba(34,197,94,.3)'; badge.style.background='rgba(34,197,94,.12)'; }
+  else if (overallPct >= 70) { badge.textContent='Moderate'; badge.style.color='#fbbf24'; badge.style.borderColor='rgba(245,158,11,.3)'; badge.style.background='rgba(245,158,11,.1)'; }
+  else { badge.textContent='Below Target'; badge.style.color='#f87171'; badge.style.borderColor='rgba(239,68,68,.3)'; badge.style.background='rgba(239,68,68,.1)'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  4. AUDIT TABLE RENDERING
+// ══════════════════════════════════════════════════════════════
+function renderTable(records) {
+  const body      = document.getElementById('auditBody');
+  const emptyEl   = document.getElementById('auditEmpty');
+  const countEl   = document.getElementById('ledgerCount');
+
+  body.innerHTML = '';
+
+  if (!records.length) {
+    emptyEl.style.display = 'flex';
+    countEl.textContent   = '0 records';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  countEl.textContent   = records.length + (records.length === 1 ? ' record' : ' records');
+
+  records.forEach(rec => {
+    const temp    = parseFloat(rec.temperature ?? rec.milk_temp ?? 3.2);
+    const isSpike = temp > 4.0;
+    const ts      = (rec.timestamp || rec.delivery_timestamp) ? new Date(rec.timestamp || rec.delivery_timestamp).toLocaleString('en-GB', {
+      day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit'
+    }) : '—';
+
+    const isNew = rec._fbKey && !seenCollectionIds.has(rec._fbKey);
+    if (rec._fbKey) seenCollectionIds.add(rec._fbKey);
+
+    const row = document.createElement('tr');
+    row.className = isNew ? 'audit-row row-live' : 'audit-row';
+    row.dataset.location = (rec.location || rec.nestle_hub || rec.nestle_destination || '').toLowerCase();
+    row.dataset.driver   = (rec.driver_name || rec.driver || '').toLowerCase();
+    row.dataset.status   = isSpike ? 'incident' : 'normal';
+
+    row.innerHTML = `
+      <td class="px-5 py-3.5 text-[11px] tabular-nums" style="color:rgba(255,255,255,.55);">${ts}</td>
+      <td class="px-4 py-3.5">
+        <div class="text-[12px] font-medium">${rec.location || rec.nestle_hub || rec.nestle_destination || '—'}</div>
+        <div class="text-[10px] mt-0.5" style="color:rgba(255,255,255,.35);">${rec.area || ''}</div>
+      </td>
+      <td class="px-4 py-3.5 text-[12px]">
+        <span style="color:rgba(255,255,255,.75);">${rec.driver_name || rec.driver || '—'}</span>
+      </td>
+      <td class="px-4 py-3.5">
+        <span class="text-[13px] font-semibold" style="color:#93c5fd;">${rec.volume ?? '—'} L</span>
+      </td>
+      <td class="px-4 py-3.5">
+        <span class="text-[13px] font-semibold" style="color:${isSpike ? '#f87171' : '#4ade80'};">${isNaN(temp) ? '—' : temp.toFixed(1)}°C</span>
+      </td>
+      <td class="px-4 py-3.5">
+        ${isSpike
+          ? `<span class="incident-badge inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.35);">⚠ QA Incident</span>`
+          : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.25);">✓ Verified</span>`
+        }
+      </td>`;
+    body.appendChild(row);
+  });
+}
+
+// ── Search + Filter ───────────────────────────────────────────
+function filterTable() {
+  const q      = document.getElementById('auditSearch').value.toLowerCase().trim();
+  const filter = document.getElementById('auditFilter').value;
+
+  const filtered = allRecords.filter(rec => {
+    const loc    = (rec.location    || rec.nestle_hub || rec.nestle_destination || '').toLowerCase();
+    const driver = (rec.driver_name || rec.driver || '').toLowerCase();
+    const matchQ = !q || loc.includes(q) || driver.includes(q);
+
+    const temp    = parseFloat(rec.temperature ?? rec.milk_temp ?? 3.2);
+    const isSpike = temp > 4.0;
+    const matchF  = filter === 'all' || (filter === 'incident' && isSpike) || (filter === 'normal' && !isSpike);
+
+    return matchQ && matchF;
+  });
+  renderTable(filtered);
+}
+
+document.getElementById('auditSearch').addEventListener('input', filterTable);
+document.getElementById('auditFilter').addEventListener('change', filterTable);
+
+// ══════════════════════════════════════════════════════════════
+//  5. FIREBASE LIVE LISTENER — logs/collections (limited to last 100 for performance)
+// ══════════════════════════════════════════════════════════════
+const seenCollectionIds = new Set(); // tracks which Firebase keys have already been rendered
+
+onValue(query(ref(db, 'logs/collections'), limitToLast(100)), snapshot => {
+  const raw = snapshot.val();
+
+  // ── If no data yet, show sensible demo defaults ───────────
+  if (!raw) {
+    document.getElementById('auditEmpty').style.display = 'flex';
+    document.getElementById('auditEmpty').querySelector('div').textContent = 'No archived collections yet.';
+    // Populate volume chart with placeholder data so page still looks great
+    volChart.data.datasets[0].data = [450, 520, 480, 610, 580, 0, 0];
+    volChart.data.datasets[1].data = Array(7).fill(TOTAL_EXPECTED);
+    volChart.update('active');
+
+    tempChart.data.labels   = ['10:00','11:00','12:00','13:00','14:00'];
+    tempChart.data.datasets[0].data = [3.1,3.2,3.4,3.2,3.5];
+    tempChart.data.datasets[1].data = Array(5).fill(4.0);
+    tempChart.update('active');
+
+    document.getElementById('kpiVolume').textContent    = '2,640 L';
+    document.getElementById('kpiVolumeLabel').textContent = 'Past 7 days (demo)';
+    document.getElementById('kpiTemp').textContent      = '3.3 °C';
+    document.getElementById('kpiTempLabel').textContent = 'Cold chain OK (demo)';
+    document.getElementById('kpiCompliance').textContent = '100%';
+    document.getElementById('kpiIncidents').textContent  = '0 incidents this week';
+    renderSuccessGrid({});
+    return;
+  }
+
+  // ── Parse records — carry Firebase key for live-flash tracking ──
+  allRecords = Object.entries(raw)
+    .filter(([, r]) => r && (r.timestamp || r.delivery_timestamp))
+    .map(([k, r]) => ({ ...r, _fbKey: k }))
+    .sort((a,b) => (b.timestamp || b.delivery_timestamp) - (a.timestamp || a.delivery_timestamp));
+
+  // Show LIVE badge on every Firebase push
+  document.getElementById('liveBadge').classList.remove('hidden');
+
+  // ── KPI: volume ───────────────────────────────────────────
+  const totalLiters = allRecords.reduce((s,r) => s + (parseInt(r.volume) || 0), 0);
+  document.getElementById('kpiVolume').textContent    = totalLiters.toLocaleString() + ' L';
+  document.getElementById('kpiVolumeLabel').textContent = allRecords.length + ' verified collection(s)';
+
+  // ── KPI: temperature ──────────────────────────────────────
+  const temps    = allRecords.map(r => parseFloat(r.temperature ?? r.milk_temp ?? 3.2)).filter(t => !isNaN(t));
+  const avgTemp  = temps.length ? (temps.reduce((s,t) => s+t, 0) / temps.length) : 0;
+  const incidents = temps.filter(t => t > 4.0).length;
+  document.getElementById('kpiTemp').textContent = avgTemp.toFixed(1) + ' °C';
+  document.getElementById('kpiTempLabel').textContent = avgTemp > 4.0 ? '⚠ Above safe range!' : '✓ Cold chain stable';
+  document.getElementById('kpiTemp').style.color = avgTemp > 4.0 ? '#f87171' : '#4ade80';
+
+  // ── KPI: compliance ───────────────────────────────────────
+  const compliancePct = temps.length ? Math.round(((temps.length - incidents) / temps.length) * 100) : 100;
+  document.getElementById('kpiCompliance').textContent = compliancePct + '%';
+  document.getElementById('kpiCompliance').style.color = compliancePct >= 95 ? '#fbbf24' : '#f87171';
+  document.getElementById('kpiIncidents').textContent  = incidents + (incidents === 1 ? ' QA incident' : ' QA incidents');
+  document.getElementById('totalIncidentsLabel').textContent = incidents;
+
+  // ── Temp badge ────────────────────────────────────────────
+  const badge = document.getElementById('tempBadge');
+  if (incidents > 0) {
+    badge.textContent            = `⚠ ${incidents} Spike(s) Detected`;
+    badge.style.color            = '#f87171';
+    badge.style.borderColor      = 'rgba(239,68,68,.35)';
+    badge.style.background       = 'rgba(239,68,68,.12)';
+  } else {
+    badge.textContent = '✓ Within Range';
+    badge.style.color = '#4ade80';
+    badge.style.borderColor = 'rgba(34,197,94,.25)';
+    badge.style.background  = 'rgba(34,197,94,.1)';
+  }
+
+  // ── Volume bar chart: group by day-of-week (most recent 7 days) ──
+  const dayTotals = [0,0,0,0,0,0,0]; // Mon=0 … Sun=6
+  const now = Date.now();
+  const WEEK_MS = 7 * 24 * 3600 * 1000;
+  allRecords.forEach(r => {
+    const ts = parseInt(r.timestamp || r.delivery_timestamp);
+    if (!ts || isNaN(ts)) return;
+    if (now - ts > WEEK_MS) return;
+    const d = new Date(ts).getDay(); // 0=Sun
+    const idx = d === 0 ? 6 : d - 1; // convert to Mon=0
+    dayTotals[idx] += (parseInt(r.volume) || 0);
+  });
+  volChart.data.datasets[0].data = dayTotals;
+  volChart.data.datasets[1].data = Array(7).fill(TOTAL_EXPECTED);
+  volChart.update('active');
+
+  // ── Temperature line chart: last 20 readings ─────────────
+  const recentTemps = allRecords
+    .filter(r => r.temperature !== undefined || r.milk_temp !== undefined)
+    .slice(0,20)
+    .reverse();
+
+  if (recentTemps.length) {
+    const tLabels = recentTemps.map(r => {
+      const d = new Date(parseInt(r.timestamp || r.delivery_timestamp));
+      return d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    });
+    const tData = recentTemps.map(r => parseFloat(r.temperature ?? r.milk_temp ?? 3.2));
+    tempChart.data.labels              = tLabels;
+    tempChart.data.datasets[0].data    = tData;
+    tempChart.data.datasets[1].data    = Array(tLabels.length).fill(4.0);
+    tempChart.update('active');
+  } else {
+    // Fallback demo line
+    tempChart.data.labels              = ['10:00','11:00','12:00','13:00','14:00'];
+    tempChart.data.datasets[0].data    = [3.1,3.2,3.4,3.2,3.5];
+    tempChart.data.datasets[1].data    = Array(5).fill(4.0);
+    tempChart.update('active');
+  }
+
+  // ── Collection success rate ───────────────────────────────
+  const volumeByLocation = {};
+  allRecords.forEach(r => {
+    const loc = r.location || r.nestle_hub || r.nestle_destination;
+    if (!loc) return;
+    volumeByLocation[loc] = (volumeByLocation[loc] || 0) + (parseInt(r.volume) || 0);
+  });
+  renderSuccessGrid(volumeByLocation);
+
+  // ── Audit table ───────────────────────────────────────────
+  renderTable(allRecords);
+});
+</script>
+</body>
+</html>

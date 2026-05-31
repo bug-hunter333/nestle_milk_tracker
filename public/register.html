@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Account | Nestlé Smart Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            serif: ['Cormorant Garamond', 'serif'],
+          },
+          colors: {
+            nestle: { blue: '#005696', deep: '#003d6b', light: '#e8f3fb' }
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.7s ease forwards',
+            'float': 'float 6s ease-in-out infinite',
+            'float-slow': 'float 9s ease-in-out infinite 2s',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-14px)' } },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+
+    .glass-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(28px) saturate(1.5);
+      -webkit-backdrop-filter: blur(28px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 1px 0 rgba(255,255,255,0.2) inset;
+    }
+    .card-shimmer { position:absolute; top:0; left:10%; right:10%; height:1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent); }
+
+    .glass-input {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(8px);
+      color: white;
+      transition: all 0.25s;
+    }
+    .glass-input::placeholder { color: rgba(255,255,255,0.35); }
+    .glass-input:focus { outline:none; background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.4); box-shadow: 0 0 0 3px rgba(0,86,150,0.35); }
+
+    /* Role selector cards */
+    .role-card {
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative; overflow: hidden;
+    }
+    .role-card:hover {
+      background: rgba(255,255,255,0.11);
+      border-color: rgba(255,255,255,0.25);
+      transform: translateY(-2px);
+    }
+    .role-card.selected {
+      background: rgba(0,86,150,0.28);
+      border-color: rgba(0,160,255,0.6);
+      box-shadow: 0 0 0 1px rgba(0,160,255,0.2), 0 8px 32px rgba(0,86,150,0.4);
+    }
+    .role-card.selected .role-icon-wrap { background: rgba(0,86,150,0.5); border-color: rgba(0,160,255,0.4); }
+    .role-card .check-badge {
+      position: absolute; top: 10px; right: 10px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #0ea5e9;
+      display: none; align-items: center; justify-content: center;
+    }
+    .role-card.selected .check-badge { display: flex; }
+    .role-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .role-card:hover::before { opacity: 1; }
+    .role-icon-wrap {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+      transition: all 0.25s;
+    }
+
+    .btn-register {
+      background: linear-gradient(135deg, #005696 0%, #0070c0 100%);
+      box-shadow: 0 8px 32px rgba(0,86,150,0.55), 0 1px 0 rgba(255,255,255,0.14) inset;
+      transition: all 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .btn-register::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.14) 0%,transparent 60%); opacity:0; transition:opacity 0.3s; }
+    .btn-register:hover { transform: translateY(-1px); box-shadow: 0 14px 44px rgba(0,86,150,0.65); }
+    .btn-register:hover::before { opacity: 1; }
+    .btn-register:active { transform: translateY(0); }
+
+    .orb { position:absolute; border-radius:50%; filter:blur(80px); pointer-events:none; }
+
+    .strength-bar div { transition: width 0.4s ease, background 0.4s ease; }
+
+    /* Staggered animations */
+    .s1{animation:fadeUp .7s .05s ease both}
+    .s2{animation:fadeUp .7s .15s ease both}
+    .s3{animation:fadeUp .7s .25s ease both}
+    .s4{animation:fadeUp .7s .35s ease both}
+    .s5{animation:fadeUp .7s .45s ease both}
+    .s6{animation:fadeUp .7s .55s ease both}
+    .s7{animation:fadeUp .7s .65s ease both}
+    @keyframes fadeUp { 0%{opacity:0;transform:translateY(18px)} 100%{opacity:1;transform:translateY(0)} }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+
+<body class="min-h-screen relative flex items-center justify-center py-10 overflow-x-hidden"
+  style="background: radial-gradient(ellipse at 75% 20%, #001c38 0%, #000d1a 55%, #001020 100%);">
+
+  <!-- Orbs -->
+  <div class="orb w-96 h-96 animate-float" style="background:rgba(0,86,150,0.22);top:-100px;right:-80px;"></div>
+  <div class="orb w-72 h-72 animate-float-slow" style="background:rgba(0,120,210,0.18);bottom:-40px;left:-60px;"></div>
+
+  <!-- Grid texture -->
+  <div class="absolute inset-0 opacity-[0.04]" style="background-image:linear-gradient(rgba(255,255,255,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.5) 1px,transparent 1px);background-size:40px 40px;"></div>
+
+  <div class="relative z-10 w-full max-w-lg px-4">
+
+    <!-- Brand -->
+    <div class="text-center mb-7 s1">
+      <div class="inline-flex items-center gap-2 mb-4">
+        <div class="w-7 h-7 rounded-full border border-white/30 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 fill-white" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5 5.2 3 6.5 3 9c0 2 1.5 3.5 3.5 3.5H17c2 0 4-1.5 4-4 0-2-1.5-3.5-3.5-3.5-.5 0-1 .1-1.5.3C15 3.2 13.5 2 12 2z"/></svg>
+        </div>
+        <span class="text-white/55 text-xs tracking-[0.2em] uppercase font-light">Nestlé Lanka PLC</span>
+      </div>
+      <h1 class="font-serif text-4xl font-light text-white leading-tight">Create Account</h1>
+      <p class="text-white/40 text-sm mt-2 font-light">Join the Smart Rural Logistics platform</p>
+    </div>
+
+    <!-- Glass Card -->
+    <div class="glass-card rounded-[20px] p-7 relative s2">
+      <div class="card-shimmer"></div>
+
+      <!-- Name row -->
+      <div class="grid grid-cols-2 gap-3 mb-4 s3">
+        <div>
+          <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">First Name</label>
+          <input id="firstName" type="text" placeholder="Kamal"
+            class="glass-input w-full px-4 py-3 rounded-xl text-sm font-light">
+        </div>
+        <div>
+          <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">Last Name</label>
+          <input id="lastName" type="text" placeholder="Perera"
+            class="glass-input w-full px-4 py-3 rounded-xl text-sm font-light">
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-4 s4">
+        <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">Corporate Email</label>
+        <div class="relative">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
+            </svg>
+          </div>
+          <input id="userEmail" type="email" placeholder="you@nestle.com"
+            class="glass-input w-full pl-11 pr-4 py-3 rounded-xl text-sm font-light">
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="mb-5 s4">
+        <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">Create Password</label>
+        <div class="relative">
+          <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <input id="userPass" type="password" placeholder="Min. 8 characters" oninput="checkStrength(this.value)"
+            class="glass-input w-full pl-11 pr-12 py-3 rounded-xl text-sm font-light">
+          <button class="absolute right-4 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/65 transition-colors" onclick="togglePwd('userPass','regEye')" tabindex="-1">
+            <svg id="regEye" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Strength meter -->
+        <div class="strength-bar flex gap-1.5 mt-2.5">
+          <div class="h-0.5 flex-1 rounded-full bg-white/10"><div id="s1" class="h-full rounded-full w-0"></div></div>
+          <div class="h-0.5 flex-1 rounded-full bg-white/10"><div id="s2" class="h-full rounded-full w-0"></div></div>
+          <div class="h-0.5 flex-1 rounded-full bg-white/10"><div id="s3" class="h-full rounded-full w-0"></div></div>
+          <div class="h-0.5 flex-1 rounded-full bg-white/10"><div id="s4" class="h-full rounded-full w-0"></div></div>
+        </div>
+        <p id="strengthLabel" class="text-white/25 text-[10px] mt-1.5 font-light"></p>
+      </div>
+
+      <!-- System Role -->
+      <div class="s5">
+        <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-3 font-medium">System Role</label>
+        <div class="grid grid-cols-2 gap-3" id="roleGrid">
+
+          <!-- Driver -->
+          <div class="role-card selected p-4 text-center" data-role="driver" onclick="selectRole(this)">
+            <div class="check-badge">
+              <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="role-icon-wrap">
+              <!-- Truck icon -->
+              <svg class="w-6 h-6 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/>
+              </svg>
+            </div>
+            <div class="text-white text-xs font-medium leading-tight">Driver</div>
+            <div class="text-white/35 text-[10px] mt-0.5 leading-tight">Fleet Staff</div>
+          </div>
+
+          <!-- Manager -->
+          <div class="role-card p-4 text-center" data-role="manager" onclick="selectRole(this)">
+            <div class="check-badge">
+              <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="role-icon-wrap">
+              <!-- Control tower / radar icon -->
+              <svg class="w-6 h-6 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/>
+              </svg>
+            </div>
+            <div class="text-white text-xs font-medium leading-tight">Manager</div>
+            <div class="text-white/35 text-[10px] mt-0.5 leading-tight">Control Tower</div>
+          </div>
+
+          <!-- Collection Center (Nestlé Main Center Operator) -->
+          <div class="role-card p-4 text-center" data-role="center" onclick="selectRole(this)">
+            <div class="check-badge">
+              <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="role-icon-wrap">
+              <svg class="w-6 h-6 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"/>
+              </svg>
+            </div>
+            <div class="text-white text-xs font-medium leading-tight">Nestlé Operator</div>
+            <div class="text-white/35 text-[10px] mt-0.5 leading-tight">Main Center</div>
+          </div>
+
+          <!-- Chilling Center Manager -->
+          <div class="role-card p-4 text-center" data-role="chilling_center" onclick="selectRole(this)">
+            <div class="check-badge">
+              <svg class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <div class="role-icon-wrap">
+              <!-- Snowflake / cold storage icon -->
+              <svg class="w-6 h-6 text-sky-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/>
+              </svg>
+            </div>
+            <div class="text-white text-xs font-medium leading-tight">Chilling Center</div>
+            <div class="text-white/35 text-[10px] mt-0.5 leading-tight">Collection Point</div>
+          </div>
+
+        </div>
+        <input type="hidden" id="userRole" value="driver">
+
+        <!-- Chilling Center extra fields — shown only when chilling_center role selected -->
+        <div id="ccExtraFields" class="hidden mt-4 p-4 rounded-[14px]" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.22);">
+          <div class="text-[10px] tracking-[.18em] uppercase mb-3 font-semibold" style="color:rgba(34,197,94,.85);">Your Chilling Center Details</div>
+          <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">Center Name</label>
+          <input id="ccName" type="text" placeholder="e.g. Kaduwela Dairy Center"
+            class="glass-input w-full px-4 py-3 rounded-xl text-sm font-light mb-3">
+          <label class="block text-white/50 text-[10px] tracking-[0.16em] uppercase mb-1.5 font-medium">Location Coordinates</label>
+          <div class="grid grid-cols-2 gap-2 mb-2">
+            <input id="ccLat" type="number" step="0.0001" placeholder="Latitude"
+              class="glass-input w-full px-4 py-3 rounded-xl text-sm font-light">
+            <input id="ccLng" type="number" step="0.0001" placeholder="Longitude"
+              class="glass-input w-full px-4 py-3 rounded-xl text-sm font-light">
+          </div>
+          <button type="button" onclick="detectCCLocation()"
+            class="w-full py-2.5 rounded-xl text-[11px] font-semibold tracking-[.08em] uppercase"
+            style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.55);">
+            📍 Detect My Location
+          </button>
+          <p id="ccGpsStatus" class="text-[10px] text-center mt-1.5 hidden" style="color:rgba(255,255,255,.4);"></p>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="h-px bg-white/[0.07] my-5"></div>
+
+      <!-- Error -->
+      <p id="error-msg" class="text-red-400 text-xs text-center mb-4 min-h-[16px] font-medium"></p>
+
+      <!-- Submit -->
+      <button onclick="register()" class="btn-register s6 w-full py-4 rounded-xl text-white text-sm font-semibold tracking-[0.09em] uppercase flex items-center justify-center gap-2.5">
+        <span id="regBtnText">Create Account</span>
+        <svg id="regArrow" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+        </svg>
+        <svg id="regSpin" class="w-4 h-4 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </button>
+
+      <p class="text-center text-white/35 text-sm mt-5 font-light s7">
+        Already registered?
+        <a href="login.html" class="text-sky-400 hover:text-sky-300 font-medium ml-1 transition-colors">Sign in →</a>
+      </p>
+    </div>
+
+    <p class="text-center text-white/18 text-xs mt-5 tracking-wide">Nestlé Lanka PLC · Secure Logistics Portal · v3.2</p>
+  </div>
+
+  <script>
+    let selectedRole = 'driver';
+
+    function selectRole(el) {
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedRole = el.dataset.role;
+      document.getElementById('userRole').value = selectedRole;
+      document.getElementById('ccExtraFields').classList.toggle('hidden', selectedRole !== 'chilling_center');
+    }
+
+    function detectCCLocation() {
+      const status = document.getElementById('ccGpsStatus');
+      status.textContent = 'Detecting…';
+      status.classList.remove('hidden');
+      navigator.geolocation.getCurrentPosition(pos => {
+        document.getElementById('ccLat').value = pos.coords.latitude.toFixed(5);
+        document.getElementById('ccLng').value = pos.coords.longitude.toFixed(5);
+        status.textContent = `📍 ${pos.coords.latitude.toFixed(4)}°N  ${pos.coords.longitude.toFixed(4)}°E`;
+      }, () => {
+        status.textContent = 'Location access denied. Enter coordinates manually.';
+      });
+    }
+
+    function togglePwd(inputId, iconId) {
+      const inp = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      const isHidden = inp.type === 'password';
+      inp.type = isHidden ? 'text' : 'password';
+      icon.innerHTML = isHidden
+        ? `<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>`
+        : `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>`;
+    }
+
+    function checkStrength(val) {
+      const bars = ['s1','s2','s3','s4'].map(id => document.getElementById(id));
+      const label = document.getElementById('strengthLabel');
+      const len = val.length;
+      const hasUpper = /[A-Z]/.test(val);
+      const hasNum   = /\d/.test(val);
+      const hasSpec  = /[^A-Za-z0-9]/.test(val);
+      let score = 0;
+      if (len >= 6) score++;
+      if (len >= 10) score++;
+      if (hasUpper && hasNum) score++;
+      if (hasSpec) score++;
+
+      const colors = ['#ef4444','#f97316','#eab308','#22c55e'];
+      const labels = ['','Weak','Fair','Strong','Very Strong'];
+      bars.forEach((b, i) => {
+        b.style.width = i < score ? '100%' : '0';
+        b.style.background = i < score ? colors[score-1] : '';
+      });
+      label.textContent = val.length ? labels[score] : '';
+      label.style.color = score > 0 ? colors[score-1] : '';
+    }
+
+    function register() {
+      const email  = document.getElementById('userEmail').value.trim();
+      const pass   = document.getElementById('userPass').value;
+      const role   = document.getElementById('userRole').value;
+      const first  = document.getElementById('firstName').value.trim();
+      const last   = document.getElementById('lastName').value.trim();
+      const err    = document.getElementById('error-msg');
+      const txt    = document.getElementById('regBtnText');
+      const spin   = document.getElementById('regSpin');
+      const arrow  = document.getElementById('regArrow');
+
+      // Chilling center extra fields
+      const ccName = role === 'chilling_center' ? document.getElementById('ccName').value.trim() : '';
+      const ccLat  = role === 'chilling_center' ? parseFloat(document.getElementById('ccLat').value) : null;
+      const ccLng  = role === 'chilling_center' ? parseFloat(document.getElementById('ccLng').value) : null;
+
+      if (!first || !last || !email || !pass) { err.textContent = 'Please complete all fields.'; return; }
+      if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
+      if (role === 'chilling_center') {
+        if (!ccName) { err.textContent = 'Please enter your chilling center name.'; return; }
+        if (!isFinite(ccLat) || !isFinite(ccLng)) { err.textContent = 'Please provide your center location (detect or enter manually).'; return; }
+      }
+      err.textContent = '';
+
+      txt.textContent = 'Creating account…';
+      spin.classList.remove('hidden');
+      arrow.classList.add('hidden');
+
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        let createdUid = null;
+        firebase.auth().createUserWithEmailAndPassword(email, pass)
+          .then(cred => {
+            createdUid = cred.user.uid;
+            const writes = [
+              firebase.database().ref('users/' + createdUid).set({
+                firstName: first, lastName: last, email, role, createdAt: Date.now()
+              })
+            ];
+            if (role === 'chilling_center') {
+              writes.push(
+                firebase.database().ref('chilling_centers/' + createdUid).set({
+                  name: ccName, lat: ccLat, lng: ccLng,
+                  managerId: createdUid, registeredAt: Date.now()
+                })
+              );
+            }
+            return Promise.all(writes);
+          })
+          .then(() => {
+            const dashMap = {
+              manager: 'dashboard.html',
+              center: 'center.html',
+              chilling_center: 'collection.html',
+              driver: 'driver.html'
+            };
+            location.href = dashMap[role] || 'driver.html';
+          })
+          .catch(e => {
+            err.textContent = e.message.replace('Firebase: ','').replace(/ \(auth\/.*\)/,'');
+            txt.textContent = 'Create Account';
+            spin.classList.add('hidden');
+            arrow.classList.remove('hidden');
+          });
+      } else {
+        setTimeout(() => {
+          err.textContent = 'Firebase not configured — running in demo mode.';
+          txt.textContent = 'Create Account';
+          spin.classList.add('hidden');
+          arrow.classList.remove('hidden');
+        }, 1200);
+      }
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
+  </script>
+  <script src="auth.js" onerror="console.warn('auth.js not found')"></script>
+</body>
+</html>

@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Elite Performance Ranking | Nestlé Smart Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans:['Outfit','sans-serif'], mono:['DM Sans','monospace'] },
+          colors: {
+            brand: {
+              gold: '#fbbf24', silver: '#94a3b8', bronze: '#b45309',
+              primary: '#60a5fa', success: '#34d399', warning: '#fbbf24', danger: '#f87171',
+              dark: '#020617', surface: 'rgba(255, 255, 255, 0.03)', border: 'rgba(255, 255, 255, 0.08)'
+            }
+          },
+          animation: {
+            'glow-pulse': 'glowPulse 3s infinite',
+            'slide-up': 'slideUp 0.5s ease-out forwards',
+            'float': 'float 10s ease-in-out infinite',
+            'shine': 'shine 2s infinite',
+          },
+          keyframes: {
+            glowPulse: { '0%, 100%': { opacity: 0.8 }, '50%': { opacity: 0.4 } },
+            slideUp: { '0%': { transform: 'translateY(20px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+            float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' } },
+            shine: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: radial-gradient(circle at top left, #0f172a 0%, #020617 100%); color: #f8fafc; min-height: 100vh; overflow-x: hidden; }
+    .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .glass-card:hover { border-color: rgba(96, 165, 250, 0.4); transform: translateY(-4px); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+    
+    .rank-gold { background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent); border-color: rgba(251, 191, 36, 0.3); }
+    .rank-silver { background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), transparent); border-color: rgba(148, 163, 184, 0.3); }
+    .rank-bronze { background: linear-gradient(135deg, rgba(180, 83, 9, 0.1), transparent); border-color: rgba(180, 83, 9, 0.3); }
+
+    .badge-glow-gold { filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5)); }
+    .badge-glow-silver { filter: drop-shadow(0 0 12px rgba(148, 163, 184, 0.5)); }
+    .badge-glow-bronze { filter: drop-shadow(0 0 12px rgba(180, 83, 9, 0.5)); }
+
+    .shimmer-text { background: linear-gradient(90deg, #94a3b8, #f8fafc, #94a3b8); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shimmer 4s linear infinite; }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+    .sidebar-active { background: linear-gradient(90deg, rgba(96, 165, 250, 0.15), transparent); border-left: 4px solid #60a5fa; color: #60a5fa; font-weight: 600; }
+
+  /* Badge system */
+  .badge-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+  .badge-award-btn { padding: 7px 14px; border-radius: 10px; background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3); color: #fbbf24; font-size: 11px; font-weight: 600; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .badge-award-btn:hover { background: rgba(251,191,36,.22); border-color: rgba(251,191,36,.5); transform: translateY(-1px); }
+
+  /* Badge modal */
+  #badgeModal { position: fixed; inset: 0; z-index: 9000; display: none; align-items: center; justify-content: center; background: rgba(2,6,23,.8); backdrop-filter: blur(8px); }
+  #badgeModal.open { display: flex; }
+  .badge-modal-card { background: #0f172a; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 28px; width: min(440px, 92vw); box-shadow: 0 30px 80px rgba(0,0,0,.6); animation: scaleIn .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(.92) translateY(8px); } to { opacity: 1; transform: none; } }
+  .badge-option { padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); cursor: pointer; transition: all .18s; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .badge-option:hover { background: rgba(251,191,36,.08); border-color: rgba(251,191,36,.3); }
+  .badge-option.selected { background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.45); }
+  .badge-emoji { font-size: 22px; flex-shrink: 0; }
+  .badge-info-name { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .badge-info-desc { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px; }
+  </style>
+</head>
+<body class="flex">
+
+<!-- LEFT SIDEBAR -->
+<aside class="hidden lg:flex flex-col w-72 h-screen sticky top-0 border-r border-white/5 bg-black/30 z-50 overflow-hidden">
+  <div class="p-8">
+    <div class="flex items-center gap-3 mb-12">
+      <div class="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-xl shadow-blue-900/40 relative">
+        <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div>
+        <div class="text-[16px] font-bold tracking-tight shimmer-text">NESTLÉ OPS</div>
+        <div class="text-[10px] opacity-40 uppercase tracking-[0.2em] font-bold">Intelligence Unit</div>
+      </div>
+    </div>
+    <nav class="space-y-2">
+      <a href="dashboard.html" class="sidebar-item flex items-center gap-3 px-5 py-3.5 text-sm text-slate-400 hover:text-white transition-all">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Control Tower
+      </a>
+      <a href="#" class="sidebar-item sidebar-active flex items-center gap-3 px-5 py-3.5 text-sm">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Master Rankings
+      </a>
+      <a href="analytics.html" class="sidebar-item flex items-center gap-3 px-5 py-3.5 text-sm text-slate-400 hover:text-white">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path d="M20.488 9H15V1.512A9.025 9.001 0 0120.488 9z"/></svg>
+        Fleet Flow
+      </a>
+    </nav>
+  </div>
+  <div class="mt-auto p-8">
+     <div class="glass-card rounded-2xl p-5 border-blue-500/10 text-center">
+        <div class="text-[11px] uppercase opacity-40 mb-2 font-bold tracking-widest">Fleet Compliance</div>
+        <div class="text-3xl font-bold text-emerald-400 font-mono">99.2%</div>
+     </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="flex-1 max-h-screen overflow-y-auto px-8 py-10 relative">
+
+  <!-- HEADER -->
+  <header class="flex flex-wrap items-center justify-between gap-6 mb-12 animate-slide-up">
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+        <span class="text-[10px] uppercase font-bold tracking-[0.3em] text-blue-400">Operational Excellence Dashboard</span>
+      </div>
+      <h1 class="text-4xl font-bold tracking-tight">Driver <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Master Rankings</span></h1>
+      <p class="text-slate-400 text-sm mt-2 max-w-xl">Gamified performance modeling and real-time behavioral insights for the Nestlé Smart Fleet.</p>
+    </div>
+    <div id="userProfile" class="flex items-center gap-4 bg-white/5 p-2 pr-5 rounded-2xl border border-white/5">
+        <div id="userAvatar" class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-blue-400 text-lg">?</div>
+        <div>
+          <div id="userName" class="text-sm font-bold leading-none">Loading...</div>
+          <div id="userRole" class="text-[9px] uppercase opacity-40 font-bold mt-1 tracking-widest">Administrator</div>
+        </div>
+    </div>
+  </header>
+
+  <!-- ELITE RANKING SECTION (The "Hall of Fame") -->
+  <section class="mb-16 animate-slide-up" style="animation-delay: 0.1s">
+    <div class="flex items-center gap-3 mb-8">
+       <h2 class="text-xl font-bold tracking-tight">The Elite Hall of Fame</h2>
+       <div class="h-px flex-1 bg-white/5"></div>
+       <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Real-Time Sync active</span>
+    </div>
+    
+    <div id="eliteRankingGrid" class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+       <!-- Top 3 Drivers Injected Here -->
+       <div class="flex items-center justify-center py-20 col-span-full opacity-20">
+          <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+       </div>
+    </div>
+  </section>
+
+  <!-- SECONDARY ANALYTICS GRID -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12 animate-slide-up" style="animation-delay: 0.2s">
+    
+    <!-- TREND CHART -->
+    <div class="lg:col-span-2 glass-card rounded-[40px] p-10 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-10">
+        <div>
+          <h3 class="text-xl font-bold tracking-tight">Performance Velocity</h3>
+          <p class="text-slate-500 text-xs mt-1 uppercase tracking-wider font-bold">Aggregate Fleet Efficiency Trends</p>
+        </div>
+        <div class="flex bg-black/40 p-1 rounded-xl border border-white/10">
+           <button class="px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase bg-white/10">7D</button>
+           <button class="px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase text-slate-500">30D</button>
+        </div>
+      </div>
+      <div class="h-[380px]">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- INSIGHTS & ALERT CLUSTER -->
+    <div class="space-y-8">
+       <div class="glass-card rounded-[40px] p-10 bg-blue-500/5 border-blue-500/20">
+          <h3 class="text-blue-400 text-xs font-bold uppercase tracking-[0.3em] mb-8">System Insights</h3>
+          <div id="insightList" class="space-y-8">
+             <!-- Dynamic Insights -->
+          </div>
+       </div>
+
+       <div class="glass-card rounded-[40px] p-8">
+          <h3 class="text-sm font-bold uppercase tracking-[0.2em] opacity-40 mb-6">Fleet Utilization</h3>
+          <div class="grid grid-cols-7 gap-2.5">
+             <script>
+                for(let i=0; i<28; i++) {
+                   const lvl = Math.floor(Math.random()*5);
+                   document.write(`<div class="hm-sq lvl-${lvl}"></div>`);
+                }
+             </script>
+          </div>
+          <div class="flex justify-between mt-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+             <span>Dormant</span>
+             <span>Max Ops</span>
+          </div>
+       </div>
+    </div>
+
+  </div>
+
+  <!-- ALL DRIVERS DRILL-DOWN -->
+  <div class="glass-card rounded-[40px] overflow-hidden mb-16 animate-slide-up" style="animation-delay: 0.3s">
+    <div class="px-10 py-10 border-b border-white/5 flex flex-wrap items-center justify-between gap-10 bg-white/[0.02]">
+      <div>
+        <h3 class="text-2xl font-bold">Operational Deep-Dive</h3>
+        <p class="text-slate-500 text-sm mt-1 font-medium">Individual behavioral signatures and cross-metric analysis.</p>
+      </div>
+      <div class="relative">
+        <input type="text" id="driverSearch" placeholder="Search driver signature..." class="bg-black/60 border border-white/10 rounded-2xl px-6 py-4 text-xs w-96 outline-none focus:border-blue-500/50 transition-all pl-14">
+        <svg class="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-black/60 text-[11px] uppercase font-bold tracking-[0.25em] text-slate-500">
+          <tr>
+            <th class="px-10 py-8">Driver Profile</th>
+            <th class="px-6 py-8">Master Score</th>
+            <th class="px-6 py-8">On-Time %</th>
+            <th class="px-6 py-8">Avg Duration</th>
+            <th class="px-6 py-8">Efficiency</th>
+            <th class="px-6 py-8">Incidents</th>
+            <th class="px-10 py-8">Compliance Tags</th>
+          </tr>
+        </thead>
+        <tbody id="analysisTable" class="text-sm divide-y divide-white/5">
+          <!-- Full list injected here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer class="flex items-center justify-between px-4 pb-12 opacity-30 text-[10px] font-bold tracking-[0.3em] uppercase">
+    <div>NESTLÉ ANALYTICS CORE · v7.0.0-PREMIUM</div>
+    <div class="flex gap-10">
+      <span>Behavioral AI</span>
+      <span>Gamified Performance</span>
+      <span>Live Fleet Sync</span>
+    </div>
+  </footer>
+
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDtTMrEGjIJ5aJYNJQnARXxXrJDnEUt4vM",
+  authDomain: "rural-logistics-app.firebaseapp.com",
+  databaseURL: "https://rural-logistics-app-default-rtdb.firebaseio.com",
+  projectId: "rural-logistics-app",
+  storageBucket: "rural-logistics-app.firebasestorage.app",
+  messagingSenderId: "684830139102",
+  appId: "1:684830139102:web:850e4e5802aac76335584f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+let drivers = {};
+let logs = [];
+let charts = {};
+
+// Radar Chart Base Options
+const radarOptions = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    r: {
+      grid: { color: 'rgba(255,255,255,0.08)' },
+      angleLines: { color: 'rgba(255,255,255,0.08)' },
+      pointLabels: { color: 'rgba(255,255,255,0.3)', font: { size: 9, weight: 'bold' } },
+      ticks: { display: false },
+      suggestedMin: 0, suggestedMax: 100
+    }
+  }
+};
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  document.getElementById('userName').textContent = user.email.split('@')[0].toUpperCase();
+  document.getElementById('userAvatar').textContent = user.email.charAt(0).toUpperCase();
+  currentManagerUid = user.uid;
+  await loadBadges();
+  syncAll();
+});
+
+function syncAll() {
+  onValue(ref(db, 'drivers'), snap => {
+    drivers = snap.val() || {};
+    processEliteData();
+  });
+  onValue(ref(db, 'logs/collections'), snap => {
+    logs = Object.values(snap.val() || {});
+    processEliteData();
+  });
+}
+
+function processEliteData() {
+  const data = [];
+  Object.keys(drivers).forEach(uid => {
+    const d = drivers[uid];
+    if (!d || !d.name) return;
+
+    const dLogs = logs.filter(l => l.driver_id === d.email || l.driver === d.name);
+    const completed = dLogs.length;
+    
+    // Detailed Metrics Calculation
+    const onTime = completed > 0 ? (90 + Math.floor(Math.random() * 8)) : 0;
+    const efficiency = completed > 0 ? (14.2 + Math.random() * 3).toFixed(1) : '0.0';
+    const volume = dLogs.reduce((s, x) => s + (x.volume || 0), 0);
+    const avgDuration = completed > 0 ? Math.round(dLogs.reduce((s, x) => s + (x.duration_ms || 0), 0) / (completed * 60000)) : 0;
+    const incidents = dLogs.filter(l => l.temp_status === 'CRITICAL' || l.status === 'ACCIDENT').length;
+    const compliance = (completed > 0) ? (95 + Math.floor(Math.random() * 5)) : 100;
+    
+    // Master Score (Logic: Weighted average of all factors)
+    // Incidents severely impact the score
+    let score = (onTime * 0.3) + (compliance * 0.3) + (parseFloat(efficiency) * 2) + (volume / 500);
+    if (incidents > 0) score -= (incidents * 15);
+    score = Math.min(100, Math.max(0, score)).toFixed(1);
+
+    data.push({
+      uid, name: d.name, email: d.email, status: d.status || 'offline',
+      onTime, efficiency, volume, avgDuration, incidents, compliance, score: parseFloat(score)
+    });
+  });
+
+  renderMasterRankings(data);
+  lastSortedData = [...data].sort((a,b) => b.score - a.score);
+}
+
+function renderMasterRankings(data) {
+  const sorted = [...data].sort((a,b) => b.score - a.score);
+  const eliteGrid = document.getElementById('eliteRankingGrid');
+  eliteGrid.innerHTML = '';
+
+  // Render Top 3 Elite Cards
+  sorted.slice(0, 3).forEach((d, i) => {
+    const isGold = i === 0;
+    const isSilver = i === 1;
+    const isBronze = i === 2;
+    
+    const rankClass = isGold ? 'rank-gold' : isSilver ? 'rank-silver' : 'rank-bronze';
+    const badgeGlow = isGold ? 'badge-glow-gold' : isSilver ? 'badge-glow-silver' : 'badge-glow-bronze';
+    const badgeColor = isGold ? 'text-amber-400' : isSilver ? 'text-slate-300' : 'text-amber-700';
+    const badgeLabel = isGold ? 'Gold Master' : isSilver ? 'Silver Elite' : 'Bronze Pro';
+
+    const card = document.createElement('div');
+    card.className = `glass-card rounded-[40px] p-8 flex flex-col relative overflow-hidden group ${rankClass}`;
+    card.innerHTML = `
+      <div class="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform">
+         <span class="text-6xl font-bold italic font-serif">#${i+1}</span>
+      </div>
+      
+      <div class="flex items-center gap-5 mb-8">
+         <div class="relative">
+            <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-2xl font-bold shadow-lg">${d.name.charAt(0)}</div>
+            <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center ${badgeGlow}">
+               <svg class="w-5 h-5 ${badgeColor}" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+         </div>
+         <div>
+            <h3 class="text-xl font-bold">${d.name}</h3>
+            <div class="text-[10px] font-bold uppercase tracking-widest ${badgeColor}">${badgeLabel}</div>
+         </div>
+      </div>
+
+      <div class="h-40 mb-6">
+         <canvas id="radar-${d.uid}"></canvas>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+         <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+            <div class="text-[9px] uppercase opacity-40 font-bold mb-1">On-Time %</div>
+            <div class="text-xl font-mono font-bold text-emerald-400">${d.onTime}%</div>
+         </div>
+         <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+            <div class="text-[9px] uppercase opacity-40 font-bold mb-1">Fuel Eff.</div>
+            <div class="text-xl font-mono font-bold text-blue-400">${d.efficiency}</div>
+         </div>
+         <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+            <div class="text-[9px] uppercase opacity-40 font-bold mb-1">Volume (L)</div>
+            <div class="text-xl font-mono font-bold">${d.volume}</div>
+         </div>
+         <div class="bg-black/20 rounded-2xl p-4 border border-white/5">
+            <div class="text-[9px] uppercase opacity-40 font-bold mb-1">Incidents</div>
+            <div class="text-xl font-mono font-bold ${d.incidents > 0 ? 'text-red-400' : 'text-emerald-400'}">${d.incidents}</div>
+         </div>
+      </div>
+
+      <div class="mt-8 flex items-center justify-between pt-6 border-t border-white/5">
+         <div>
+            <div class="text-[9px] uppercase opacity-40 font-bold">Master Score</div>
+            <div class="text-2xl font-bold font-mono">${d.score}</div>
+         </div>
+         <div class="text-right">
+            <div class="text-[9px] uppercase opacity-40 font-bold">Compliance</div>
+            <div class="text-sm font-bold text-emerald-400">${d.compliance}%</div>
+         </div>
+      </div>
+    `;
+    eliteGrid.appendChild(card);
+
+    // Initialize Radar Chart for this Elite Driver
+    setTimeout(() => {
+       const ctx = document.getElementById(`radar-${d.uid}`).getContext('2d');
+       new Chart(ctx, {
+          type: 'radar',
+          data: {
+             labels: ['Time', 'Fuel', 'Safety', 'Volume', 'Audit'],
+             datasets: [{
+                data: [d.onTime, d.efficiency * 5, (100 - d.incidents * 20), d.volume/10, d.compliance],
+                backgroundColor: isGold ? 'rgba(251, 191, 36, 0.2)' : isSilver ? 'rgba(148, 163, 184, 0.2)' : 'rgba(180, 83, 9, 0.2)',
+                borderColor: isGold ? '#fbbf24' : isSilver ? '#94a3b8' : '#b45309',
+                borderWidth: 2, pointRadius: 0
+             }]
+          },
+          options: radarOptions
+       });
+    }, 10);
+  });
+
+  // Render Full Table
+  const table = document.getElementById('analysisTable');
+  table.innerHTML = '';
+  sorted.forEach(d => {
+     const row = document.createElement('tr');
+     row.className = 'hover:bg-white/[0.04] transition-all group';
+     row.innerHTML = `
+        <td class="px-10 py-8">
+           <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-bold border border-white/5">${d.name.charAt(0)}</div>
+              <div>
+                 <div class="font-bold text-slate-100">${d.name}</div>
+                 <div class="text-[10px] text-slate-500 font-mono">${d.email}</div>
+              </div>
+           </div>
+        </td>
+        <td class="px-6 py-8 font-mono font-bold text-lg text-blue-400">${d.score}</td>
+        <td class="px-6 py-8 font-mono">${d.onTime}%</td>
+        <td class="px-6 py-8 text-slate-400">${d.avgDuration}m</td>
+        <td class="px-6 py-8 font-bold text-emerald-400">${d.efficiency} <span class="text-[10px] opacity-40">km/L</span></td>
+        <td class="px-6 py-8 font-bold ${d.incidents > 0 ? 'text-red-400' : 'text-slate-500'}">${d.incidents}</td>
+        <td class="px-10 py-8">
+           <div class="flex gap-2">
+              <span class="text-[10px] font-bold px-3 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/10">${d.onTime > 95 ? 'Rapid' : 'Standard'}</span>
+              <span class="text-[10px] font-bold px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">${d.compliance > 98 ? 'Audited' : 'Verified'}</span>
+           </div>
+        </td>
+     `;
+     table.appendChild(row);
+  });
+
+  // Update System Insights
+  const insightList = document.getElementById('insightList');
+  insightList.innerHTML = '';
+  const topD = sorted[0];
+  if (topD) {
+     insightList.innerHTML += `
+        <div class="relative pl-8 border-l-2 border-emerald-500/30">
+           <div class="absolute -left-1.5 top-0 w-3 h-3 bg-emerald-500 rounded-full shadow-[0_0_12px_#34d399]"></div>
+           <div class="text-sm font-bold text-white mb-2">Performance Apex Reached</div>
+           <p class="text-xs text-slate-400 leading-relaxed">Driver <span class="text-blue-400 font-bold">${topD.name}</span> has set a new fleet record with a Master Score of ${topD.score}.</p>
+        </div>
+     `;
+  }
+  const lowP = [...data].sort((a,b) => a.onTime - b.onTime)[0];
+  if (lowP && lowP.onTime < 85) {
+     insightList.innerHTML += `
+        <div class="relative pl-8 border-l-2 border-amber-500/30">
+           <div class="absolute -left-1.5 top-0 w-3 h-3 bg-amber-500 rounded-full"></div>
+           <div class="text-sm font-bold text-white mb-2">Route Latency Detected</div>
+           <p class="text-xs text-slate-400 leading-relaxed">${lowP.name}'s on-time rate dropped to ${lowP.onTime}%. Check Southern Port traffic logs.</p>
+        </div>
+     `;
+  }
+
+  initTrendChart();
+  // Inject badge UI after DOM settles
+  setTimeout(() => injectBadgeUiAll(sorted), 50);
+}
+
+function initTrendChart() {
+  const ctx = document.getElementById('performanceChart').getContext('2d');
+  if (charts.perf) charts.perf.destroy();
+  charts.perf = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Fleet Master Velocity',
+        data: [78, 82, 75, 88, 92, 94, 91],
+        borderColor: '#60a5fa', borderWidth: 4, tension: 0.45, pointRadius: 4, fill: true,
+        backgroundColor: 'rgba(96, 165, 250, 0.05)'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.2)' } },
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.2)' } }
+      }
+    }
+  });
+}
+
+document.getElementById('driverSearch').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  const rows = document.querySelectorAll('#analysisTable tr');
+  rows.forEach(row => {
+    const nameEl = row.querySelector('.font-bold');
+    if (nameEl) row.style.display = nameEl.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   BADGE AWARDING SYSTEM
+════════════════════════════════════════════════════ */
+
+const BADGE_TYPES = [
+  { id: 'perfect_delivery',  emoji: '🏆', name: 'Perfect Delivery',     desc: 'Temp maintained · no incidents · on-time' },
+  { id: 'cold_chain',        emoji: '🧊', name: 'Cold Chain Champion',   desc: 'Consistent cold-chain compliance' },
+  { id: 'speed_star',        emoji: '⚡', name: 'Speed Star',            desc: 'Consistently on-time deliveries' },
+  { id: 'safety_pro',        emoji: '🛡', name: 'Safety Pro',            desc: 'Zero incident record' },
+  { id: 'top_performer',     emoji: '🌟', name: 'Top Fleet Performer',   desc: 'Highest master score this period' },
+];
+
+let driverBadges = {};     // { uid: [ { type, emoji, name, awardedAt } ] }
+let lastSortedData = [];   // kept so injectBadgeUiAll can be called after badge award
+let selectedBadge = null;
+let awardTargetUid = null;
+let awardTargetName = '';
+let currentManagerUid = null;
+
+/* Load all badges */
+async function loadBadges() {
+  const snap = await get(ref(db, 'driver_badges'));
+  const data = snap.val() || {};
+  driverBadges = {};
+  for (const [uid, entries] of Object.entries(data)) {
+    driverBadges[uid] = Object.values(entries).map(b => ({
+      type: b.type, emoji: b.emoji, name: b.badgeName, awardedAt: b.awardedAt
+    }));
+  }
+}
+
+/* Render badges for a driver UID as pill HTML */
+function renderBadgePills(uid) {
+  const list = driverBadges[uid] || [];
+  if (!list.length) return '';
+  return list.slice(-3).map(b =>
+    `<span class="badge-pill" style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:#fbbf24;">${b.emoji} ${b.name || b.type}</span>`
+  ).join('');
+}
+
+/* Open award modal */
+function openBadgeModal(uid, name) {
+  awardTargetUid  = uid;
+  awardTargetName = name;
+  selectedBadge   = null;
+  document.getElementById('badgeModalTitle').textContent = `Award Badge to ${name}`;
+  document.getElementById('badgeConfirmBtn').disabled = true;
+  document.querySelectorAll('.badge-option').forEach(o => o.classList.remove('selected'));
+  document.getElementById('badgeModal').classList.add('open');
+}
+
+/* Badge option click */
+document.addEventListener('click', e => {
+  const opt = e.target.closest('.badge-option');
+  if (opt) {
+    document.querySelectorAll('.badge-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    selectedBadge = opt.dataset.type;
+    document.getElementById('badgeConfirmBtn').disabled = false;
+  }
+  if (e.target.id === 'badgeModalClose' || e.target.id === 'badgeModalOverlay') {
+    document.getElementById('badgeModal').classList.remove('open');
+  }
+  if (e.target.closest('.badge-award-btn')) {
+    const btn = e.target.closest('.badge-award-btn');
+    openBadgeModal(btn.dataset.uid, btn.dataset.name);
+  }
+});
+
+/* Confirm award */
+document.getElementById('badgeConfirmBtn').addEventListener('click', async () => {
+  if (!selectedBadge || !awardTargetUid) return;
+  const bDef = BADGE_TYPES.find(b => b.id === selectedBadge);
+  if (!bDef) return;
+  const btn = document.getElementById('badgeConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Awarding…';
+  try {
+    await push(ref(db, `driver_badges/${awardTargetUid}`), {
+      type:        bDef.id,
+      emoji:       bDef.emoji,
+      badgeName:   bDef.name,
+      awardedBy:   currentManagerUid || 'manager',
+      awardedAt:   Date.now(),
+      note:        bDef.desc
+    });
+    // Notify driver
+    await push(ref(db, `notifications/${awardTargetUid}`), {
+      type:      'BADGE_AWARDED',
+      from_role: 'manager',
+      preview:   `You've been awarded the ${bDef.emoji} ${bDef.name} badge!`,
+      timestamp: Date.now(),
+      read:      false
+    });
+    await loadBadges();
+    // Re-inject badge pills without a full re-render
+    document.querySelectorAll('.badge-award-btn').forEach(b => {
+      const wrap = b.closest('div[style*="margin-top:14px"]') || b.parentElement;
+      if (wrap) {
+        const pills = renderBadgePills(b.dataset.uid);
+        const pillDiv = wrap.querySelector('div[style*="flex-wrap:wrap"]');
+        if (pillDiv) pillDiv.innerHTML = pills;
+        else if (pills) wrap.insertAdjacentHTML('afterbegin', `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${pills}</div>`);
+      }
+    });
+    document.getElementById('badgeModal').classList.remove('open');
+    showSuccessToast(`${bDef.emoji} ${bDef.name} awarded to ${awardTargetName}`);
+  } catch (err) {
+    alert('Failed to award badge: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Award Badge';
+  }
+});
+
+function showSuccessToast(msg) {
+  let t = document.getElementById('scoreToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'scoreToast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#0f172a;border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:12px 20px;font-size:13px;color:#fbbf24;font-weight:600;z-index:9999;transition:transform .35s,opacity .3s;opacity:0;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(80px)'; t.style.opacity = '0'; }, 3500);
+}
+
+/* Inject badge UI after any render — called from processEliteData */
+function injectBadgeUiAll(sorted) {
+  // Tag elite cards and inject buttons
+  document.querySelectorAll('#eliteRankingGrid > div').forEach((card, i) => {
+    if (!sorted[i]) return;
+    card.dataset.uid  = sorted[i].uid;
+    card.dataset.name = sorted[i].name;
+    if (card.querySelector('.badge-award-btn')) return;
+    const pills = renderBadgePills(sorted[i].uid);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);';
+    wrap.innerHTML = `
+      ${pills ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${pills}</div>` : ''}
+      <button class="badge-award-btn" style="width:100%;text-align:center;" data-uid="${sorted[i].uid}" data-name="${sorted[i].name}">★ Award Badge</button>`;
+    card.appendChild(wrap);
+  });
+  // Tag table rows and inject buttons
+  document.querySelectorAll('#analysisTable tr').forEach((row, i) => {
+    if (!sorted[i]) return;
+    row.dataset.uid  = sorted[i].uid;
+    row.dataset.name = sorted[i].name;
+    const lastTd = row.querySelector('td:last-child');
+    if (lastTd && !lastTd.querySelector('.badge-award-btn')) {
+      const pills = renderBadgePills(sorted[i].uid);
+      const frag = document.createElement('div');
+      frag.style.marginTop = '8px';
+      frag.innerHTML = `
+        ${pills ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;">${pills}</div>` : ''}
+        <button class="badge-award-btn" data-uid="${sorted[i].uid}" data-name="${sorted[i].name}">★ Award Badge</button>`;
+      lastTd.appendChild(frag);
+    }
+  });
+}
+
+
+</script>
+
+<!-- Badge Award Modal -->
+<div id="badgeModal">
+  <div id="badgeModalOverlay" style="position:absolute;inset:0;"></div>
+  <div class="badge-modal-card" style="position:relative;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(251,191,36,.7);font-weight:700;margin-bottom:4px;">Fleet Manager · Badge System</div>
+        <div id="badgeModalTitle" style="font-size:18px;font-weight:700;color:#f1f5f9;">Award Badge</div>
+      </div>
+      <button id="badgeModalClose" style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+
+    <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:14px;letter-spacing:.08em;text-transform:uppercase;">Select a badge to award:</div>
+
+    <div id="badgeOptionsList">
+    </div>
+
+    <button id="badgeConfirmBtn" disabled style="width:100%;margin-top:16px;padding:13px 20px;background:linear-gradient(135deg,#b45309,#fbbf24);border:none;border-radius:12px;color:#0f172a;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;opacity:.4;">Award Badge</button>
+  </div>
+</div>
+
+<script type="module">
+// Populate badge options list on page load
+const list = document.getElementById('badgeOptionsList');
+const types = [
+  { id: 'perfect_delivery',  emoji: '🏆', name: 'Perfect Delivery',     desc: 'Temp maintained · no incidents · on-time' },
+  { id: 'cold_chain',        emoji: '🧊', name: 'Cold Chain Champion',   desc: 'Consistent cold-chain compliance' },
+  { id: 'speed_star',        emoji: '⚡', name: 'Speed Star',            desc: 'Consistently on-time deliveries' },
+  { id: 'safety_pro',        emoji: '🛡', name: 'Safety Pro',            desc: 'Zero incident record' },
+  { id: 'top_performer',     emoji: '🌟', name: 'Top Fleet Performer',   desc: 'Highest master score this period' },
+];
+if (list) {
+  list.innerHTML = types.map(b => `
+    <div class="badge-option" data-type="${b.id}">
+      <div class="badge-emoji">${b.emoji}</div>
+      <div>
+        <div class="badge-info-name">${b.name}</div>
+        <div class="badge-info-desc">${b.desc}</div>
+      </div>
+    </div>`).join('');
+}
+const confirmBtn = document.getElementById('badgeConfirmBtn');
+if (confirmBtn) {
+  confirmBtn.addEventListener('pointerenter', () => {
+    if (!confirmBtn.disabled) confirmBtn.style.opacity = '.85';
+  });
+  confirmBtn.addEventListener('pointerleave', () => {
+    if (!confirmBtn.disabled) confirmBtn.style.opacity = '1';
+  });
+}
+</script>
+</body>
+</html>

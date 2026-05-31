@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nestlé Lanka | Smart Rural Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #005696;
+      --blue-deep: #003d6b;
+      --blue-light: #e8f3fb;
+      --silver: #c8d4dc;
+      --silver-light: #eef2f5;
+      --white: #ffffff;
+      --text-dark: #0d1a24;
+      --text-mid: #4a6070;
+      --text-light: rgba(255,255,255,0.72);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--white);
+      color: var(--text-dark);
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 22px 60px;
+      background: rgba(0,0,0,0);
+      transition: background 0.5s, padding 0.4s;
+    }
+    nav.scrolled {
+      background: rgba(0,20,40,0.92);
+      backdrop-filter: blur(12px);
+      padding: 14px 60px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .nav-logo-mark {
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-logo-mark svg { width: 18px; height: 18px; fill: white; }
+    .nav-brand {
+      font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: white; font-weight: 500; line-height: 1.3;
+    }
+    .nav-brand span { display: block; opacity: 0.6; font-weight: 300; font-size: 10px; letter-spacing: 0.22em; }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a {
+      color: rgba(255,255,255,0.75); font-size: 13px; letter-spacing: 0.06em;
+      text-decoration: none; font-weight: 400;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: white; }
+    .nav-cta {
+      padding: 10px 24px; font-size: 12px; letter-spacing: 0.1em;
+      text-transform: uppercase; font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.4);
+      color: white; background: transparent;
+      border-radius: 2px; cursor: pointer; text-decoration: none;
+      transition: background 0.25s, border-color 0.25s;
+      white-space: nowrap;
+    }
+    .nav-cta:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.7); }
+
+    /* Hamburger */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column; gap: 5px; cursor: pointer;
+      padding: 4px; background: none; border: none;
+    }
+    .nav-hamburger span {
+      display: block; width: 22px; height: 1.5px;
+      background: white; border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    /* Mobile drawer */
+    .nav-drawer {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 99;
+      background: rgba(0,20,40,0.97);
+      backdrop-filter: blur(16px);
+      flex-direction: column;
+      justify-content: center; align-items: center; gap: 36px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .nav-drawer.open { opacity: 1; pointer-events: all; }
+    .nav-drawer a {
+      color: white; font-size: 22px; text-decoration: none;
+      letter-spacing: 0.08em; font-weight: 300;
+      font-family: 'Cormorant Garamond', serif;
+      transition: opacity 0.2s;
+    }
+    .nav-drawer a:hover { opacity: 0.6; }
+    .nav-drawer .nav-cta {
+      font-size: 13px; font-family: 'DM Sans', sans-serif;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; height: 100vh; min-height: 600px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 0 60px 80px;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(160deg, rgba(0,22,44,0.82) 0%, rgba(0,40,80,0.58) 50%, rgba(0,16,32,0.86) 100%),
+        url('https://images.unsplash.com/photo-1589802829985-817e51171b92?auto=format&fit=crop&w=1800&q=80') center/cover no-repeat;
+      transform: scale(1.04);
+      transition: transform 8s ease-out;
+    }
+    .hero-bg.loaded { transform: scale(1); }
+    .hero-grain {
+      position: absolute; inset: 0; opacity: 0.035; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 200px;
+    }
+    .hero-rule {
+      position: absolute; top: 0; left: 60px; right: 60px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    }
+    .hero-eyebrow {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+      opacity: 0; transform: translateY(16px);
+      animation: fadeUp 0.8s 0.3s forwards;
+    }
+    .hero-eyebrow-line { width: 40px; height: 1px; background: var(--silver); }
+    .hero-eyebrow-text {
+      font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--silver); font-weight: 400;
+    }
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(40px, 7vw, 88px);
+      font-weight: 300; line-height: 1.05; color: white;
+      max-width: 820px;
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp 0.9s 0.5s forwards;
+    }
+    .hero-title em { font-style: normal; color: var(--silver); }
+    .hero-sub {
+      margin-top: 24px; max-width: 480px;
+      font-size: 15px; line-height: 1.7; color: var(--text-light);
+      font-weight: 300;
+      opacity: 0; transform: translateY(16px);
+      animation: fadeUp 0.8s 0.75s forwards;
+    }
+    .hero-actions {
+      margin-top: 40px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+      opacity: 0; transform: translateY(14px);
+      animation: fadeUp 0.8s 0.95s forwards;
+    }
+    .btn-primary {
+      padding: 15px 38px; font-size: 13px; letter-spacing: 0.1em;
+      text-transform: uppercase; font-weight: 500;
+      background: var(--white); color: var(--blue-deep);
+      border: none; border-radius: 2px; cursor: pointer;
+      text-decoration: none; display: inline-block;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .btn-primary:hover { background: var(--blue-light); transform: translateY(-1px); }
+    .btn-ghost {
+      padding: 15px 32px; font-size: 13px; letter-spacing: 0.1em;
+      text-transform: uppercase; font-weight: 400;
+      background: transparent; color: white;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;
+      cursor: pointer; text-decoration: none; display: inline-block;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.06); }
+
+    /* Stats row */
+    .hero-stats {
+      position: absolute; bottom: 80px; right: 60px;
+      display: flex; gap: 40px;
+      opacity: 0; animation: fadeUp 0.8s 1.2s forwards;
+    }
+    .stat { text-align: right; }
+    .stat-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 36px; font-weight: 300; color: white; line-height: 1;
+    }
+    .stat-label {
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.5); margin-top: 4px; font-weight: 400;
+    }
+    .stat-div { width: 1px; background: rgba(255,255,255,0.15); align-self: stretch; }
+
+    /* Scroll indicator */
+    .scroll-cue {
+      position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      opacity: 0; animation: fadeUp 1s 1.5s forwards;
+    }
+    .scroll-cue span { font-size: 10px; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+    .scroll-line {
+      width: 1px; height: 36px; background: rgba(255,255,255,0.2);
+      position: relative; overflow: hidden;
+    }
+    .scroll-line::after {
+      content: ''; position: absolute; top: -100%; left: 0; right: 0;
+      height: 100%; background: white;
+      animation: scrollDrop 2s 2s ease-in-out infinite;
+    }
+    @keyframes scrollDrop { 0% { top: -100%; } 100% { top: 100%; } }
+
+    /* ── FEATURES STRIP ── */
+    .features-strip {
+      background: var(--blue);
+      display: grid; grid-template-columns: repeat(4, 1fr);
+    }
+    .feature-cell {
+      padding: 40px 32px; border-right: 1px solid rgba(255,255,255,0.12);
+      transition: background 0.3s;
+    }
+    .feature-cell:last-child { border-right: none; }
+    .feature-cell:hover { background: rgba(255,255,255,0.06); }
+    .feature-icon {
+      width: 36px; height: 36px; margin-bottom: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feature-icon svg { width: 24px; height: 24px; stroke: var(--silver); fill: none; stroke-width: 1.5; }
+    .feature-title { font-size: 14px; font-weight: 500; color: white; letter-spacing: 0.04em; margin-bottom: 8px; }
+    .feature-desc { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.65; font-weight: 300; }
+
+    /* ── HOW IT WORKS ── */
+    .section { padding: 100px 60px; }
+    .section-eyebrow { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .section-eyebrow-line { width: 32px; height: 1px; background: var(--blue); }
+    .section-eyebrow-text { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--blue); font-weight: 500; }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(32px, 4vw, 54px); font-weight: 300; line-height: 1.15;
+      color: var(--text-dark); max-width: 600px;
+    }
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+      background: var(--silver-light); margin-top: 64px;
+      border: 1px solid var(--silver-light);
+    }
+    .step-cell {
+      background: white; padding: 48px 40px;
+      position: relative; overflow: hidden;
+      transition: background 0.3s;
+    }
+    .step-cell:hover { background: #f8fbfd; }
+    .step-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 72px; font-weight: 300; color: var(--silver-light);
+      line-height: 1; position: absolute; top: 24px; right: 28px;
+      transition: color 0.3s;
+    }
+    .step-cell:hover .step-num { color: #dde8f0; }
+    .step-tag {
+      display: inline-block; padding: 4px 12px; font-size: 10px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      background: var(--blue-light); color: var(--blue); border-radius: 2px;
+      font-weight: 500; margin-bottom: 20px;
+    }
+    .step-title { font-size: 18px; font-weight: 500; margin-bottom: 12px; color: var(--text-dark); }
+    .step-desc { font-size: 14px; color: var(--text-mid); line-height: 1.7; font-weight: 300; }
+
+    /* ── DASHBOARD ── */
+    .dashboard-section {
+      background: var(--blue-deep);
+      padding: 100px 60px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+    }
+    .dashboard-copy .section-eyebrow-line { background: var(--silver); }
+    .dashboard-copy .section-eyebrow-text { color: var(--silver); }
+    .dashboard-copy .section-title { color: white; max-width: 440px; }
+    .dashboard-copy p {
+      margin-top: 24px; font-size: 15px; color: rgba(255,255,255,0.6);
+      line-height: 1.75; font-weight: 300; max-width: 400px;
+    }
+    .dashboard-copy .btn-primary { margin-top: 40px; display: inline-block; }
+
+    .mock-dashboard {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; overflow: hidden;
+    }
+    .mock-topbar {
+      background: rgba(0,0,0,0.3); padding: 12px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .mock-dots { display: flex; gap: 6px; }
+    .mock-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .mock-dot-r { background: rgba(255,80,80,0.6); }
+    .mock-dot-y { background: rgba(255,200,50,0.5); }
+    .mock-dot-g { background: rgba(50,220,100,0.5); }
+    .mock-title { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; }
+    .mock-body { padding: 20px; }
+    .mock-stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+    .mock-stat {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px; padding: 14px;
+    }
+    .mock-stat-val { font-size: 20px; font-weight: 500; color: white; }
+    .mock-stat-lbl { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; margin-top: 2px; }
+    .mock-map {
+      background: rgba(0,30,60,0.5); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px; height: 140px; position: relative; overflow: hidden;
+    }
+    .mock-map-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .truck-dot {
+      position: absolute; width: 8px; height: 8px; border-radius: 50%;
+      background: #4ecf82; box-shadow: 0 0 6px #4ecf82;
+    }
+    .truck-dot::after {
+      content: ''; position: absolute; inset: -4px;
+      border-radius: 50%; border: 1px solid rgba(78,207,130,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.8);opacity:0} }
+    .truck-dot.warning { background: #f5a623; box-shadow: 0 0 6px #f5a623; }
+    .truck-dot.warning::after { border-color: rgba(245,166,35,0.4); animation-delay: 0.5s; }
+    .mock-route { position: absolute; inset: 0; }
+    .mock-route path { fill: none; stroke: rgba(0, 120, 220, 0.3); stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .mock-table { margin-top: 12px; }
+    .mock-table-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .mock-table-row:last-child { border-bottom: none; }
+    .mock-vehicle { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 500; }
+    .mock-route-lbl { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .mock-badge { font-size: 10px; padding: 3px 8px; border-radius: 2px; font-weight: 500; letter-spacing: 0.06em; }
+    .badge-green { background: rgba(78,207,130,0.15); color: #4ecf82; }
+    .badge-amber { background: rgba(245,166,35,0.15); color: #f5a623; }
+    .badge-blue  { background: rgba(0,160,255,0.15);  color: #5ac8fa; }
+
+    /* ── INFO BAND ── */
+    .info-band {
+      padding: 80px 60px;
+      display: grid; grid-template-columns: 1fr 2px 1fr; gap: 60px; align-items: center;
+    }
+    .info-divider { background: var(--silver-light); }
+    blockquote {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(20px, 2.5vw, 26px); font-weight: 300; line-height: 1.5;
+      color: var(--text-dark);
+    }
+    blockquote::before { content: '"'; color: var(--blue); font-size: 60px; line-height: 0.5; display: block; margin-bottom: 12px; }
+    .quote-attr { margin-top: 20px; font-size: 13px; color: var(--text-mid); font-style: italic; }
+    .info-list { list-style: none; display: flex; flex-direction: column; gap: 20px; }
+    .info-list li { display: flex; gap: 16px; align-items: flex-start; }
+    .info-list-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--blue-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .info-list-icon svg { width: 14px; height: 14px; stroke: var(--blue); fill: none; stroke-width: 2; }
+    .info-list-text strong { display: block; font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .info-list-text span { font-size: 13px; color: var(--text-mid); line-height: 1.55; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--text-dark); padding: 60px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      flex-wrap: wrap; gap: 32px;
+    }
+    .footer-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px; font-weight: 300; color: white; margin-bottom: 8px;
+    }
+    .footer-sub { font-size: 12px; color: rgba(255,255,255,0.35); letter-spacing: 0.12em; text-transform: uppercase; }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .footer-links a { color: rgba(255,255,255,0.4); font-size: 12px; text-decoration: none; letter-spacing: 0.06em; transition: color 0.2s; }
+    .footer-links a:hover { color: rgba(255,255,255,0.75); }
+    .footer-legal { font-size: 11px; color: rgba(255,255,255,0.2); margin-top: 16px; }
+
+    /* ── KEYFRAMES ── */
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE BREAKPOINTS
+    ══════════════════════════════════════════ */
+
+    /* ── TABLET: 768px–1024px ── */
+    @media (max-width: 1024px) {
+      nav { padding: 18px 32px; }
+      nav.scrolled { padding: 12px 32px; }
+      .nav-links { gap: 24px; }
+      .hero { padding: 0 40px 80px; }
+      .hero-rule { left: 40px; right: 40px; }
+      .hero-stats { right: 40px; gap: 28px; }
+      .stat-num { font-size: 30px; }
+      .features-strip { grid-template-columns: repeat(2, 1fr); }
+      .feature-cell { border-right: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12); }
+      .feature-cell:nth-child(2),
+      .feature-cell:nth-child(4) { border-right: none; }
+      .feature-cell:nth-child(3),
+      .feature-cell:nth-child(4) { border-bottom: none; }
+      .section { padding: 80px 40px; }
+      .steps-grid { grid-template-columns: 1fr 1fr; }
+      .step-cell:last-child { grid-column: 1 / -1; }
+      .dashboard-section { padding: 80px 40px; gap: 48px; }
+      .info-band { padding: 72px 40px; gap: 40px; }
+      footer { padding: 48px 40px; }
+    }
+
+    /* ── MOBILE: ≤ 768px ── */
+    @media (max-width: 768px) {
+      /* Nav */
+      nav { padding: 16px 20px; }
+      nav.scrolled { padding: 12px 20px; }
+      .nav-links { display: none; }
+      .nav-cta { display: none; }
+      .nav-hamburger { display: flex; z-index: 101; }
+
+      /* Mobile drawer */
+      .nav-drawer { display: flex; }
+
+      /* Hero */
+      .hero {
+        padding: 0 20px 100px;
+        justify-content: flex-end;
+        min-height: 100svh;
+      }
+      .hero-rule { left: 20px; right: 20px; }
+      .hero-eyebrow { margin-bottom: 18px; }
+      .hero-title { font-size: clamp(36px, 10vw, 54px); }
+      .hero-sub { font-size: 14px; margin-top: 18px; max-width: 100%; }
+      .hero-actions {
+        flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 32px;
+      }
+      .btn-primary, .btn-ghost { width: 100%; text-align: center; padding: 16px 24px; }
+
+      /* Move stats below hero content — stack them */
+      .hero-stats {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        margin-top: 40px;
+        opacity: 0;
+        animation: fadeUp 0.8s 1.2s forwards;
+      }
+      .stat { text-align: left; padding: 0 12px; border-right: 1px solid rgba(255,255,255,0.15); }
+      .stat:first-child { padding-left: 0; }
+      .stat:last-child { border-right: none; }
+      .stat-div { display: none; }
+      .stat-num { font-size: 26px; }
+      .stat-label { font-size: 9px; }
+
+      /* Features */
+      .features-strip { grid-template-columns: 1fr; }
+      .feature-cell {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 32px 24px;
+      }
+      .feature-cell:last-child { border-bottom: none; }
+
+      /* How it works */
+      .section { padding: 64px 20px; }
+      .steps-grid { grid-template-columns: 1fr; margin-top: 40px; }
+      .step-cell { padding: 36px 24px; }
+      .step-cell:last-child { grid-column: auto; }
+      .step-num { font-size: 54px; top: 18px; right: 18px; }
+
+      /* Dashboard */
+      .dashboard-section {
+        grid-template-columns: 1fr;
+        padding: 64px 20px;
+        gap: 40px;
+      }
+      .dashboard-copy .section-title { max-width: 100%; }
+      .dashboard-copy p { max-width: 100%; }
+
+      /* Mock dashboard adjustments */
+      .mock-stats-row { grid-template-columns: repeat(3,1fr); gap: 8px; }
+      .mock-stat { padding: 10px; }
+      .mock-stat-val { font-size: 16px; }
+      .mock-title { display: none; }
+
+      /* Info band */
+      .info-band {
+        grid-template-columns: 1fr;
+        gap: 48px;
+        padding: 64px 20px;
+      }
+      .info-divider { display: none; }
+      blockquote { font-size: 20px; }
+
+      /* Footer */
+      footer {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 48px 20px;
+        gap: 28px;
+      }
+      .footer-right { width: 100%; }
+      .footer-links { gap: 20px; }
+    }
+
+    /* ── SMALL MOBILE: ≤ 400px ── */
+    @media (max-width: 400px) {
+      .hero-title { font-size: 34px; }
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+      .hero-stats .stat:nth-child(3) { border-right: none; }
+      .mock-stats-row { grid-template-columns: repeat(3,1fr); }
+      .mock-stat-val { font-size: 14px; }
+      .mock-stat-lbl { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <div class="nav-logo">
+      <div class="nav-logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+      </div>
+      <div class="nav-brand">
+        Nestlé Lanka PLC
+        <span>Smart Rural Logistics</span>
+      </div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#platform">Platform</a></li>
+      <li><a href="#network">Network</a></li>
+    </ul>
+    <a href="#" class="nav-cta">Request Access</a>
+    <button class="nav-hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- MOBILE DRAWER -->
+  <nav class="nav-drawer" id="navDrawer">
+    <a href="#how" class="drawer-link">How It Works</a>
+    <a href="#platform" class="drawer-link">Platform</a>
+    <a href="#network" class="drawer-link">Network</a>
+    <a href="#" class="nav-cta">Request Access</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg" id="heroBg"></div>
+    <div class="hero-grain"></div>
+    <div class="hero-rule"></div>
+
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-line"></span>
+      <span class="hero-eyebrow-text">Milk Tracker AI · Sri Lanka</span>
+    </div>
+
+    <h1 class="hero-title">
+      Optimising the<br>
+      <em>First Mile</em> of<br>
+      Rural Milk Collection
+    </h1>
+
+    <p class="hero-sub">
+      Real-time GPS tracking, AI-driven ETA predictions, and end-to-end cold chain visibility — from farm gate to factory.
+    </p>
+
+    <div class="hero-actions">
+      <a href="./login.html" class="btn-primary">Get Started →</a>
+      <a href="#how" class="btn-ghost">See How It Works</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">240+</div>
+        <div class="stat-label">Collection Routes</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-num">98.4%</div>
+        <div class="stat-label">On-Time Delivery</div>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <div class="stat-num">12K</div>
+        <div class="stat-label">Farmer Touchpoints</div>
+      </div>
+    </div>
+
+    <div class="scroll-cue">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- FEATURES STRIP -->
+  <div class="features-strip">
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <div class="feature-title">Live ETA Engine</div>
+      <div class="feature-desc">AI recalculates arrival windows every 90 seconds based on traffic, road conditions, and load weight.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+      </div>
+      <div class="feature-title">GPS Fleet Tracking</div>
+      <div class="feature-desc">Sub-metre precision across 9 districts. Every collection vehicle visible on a single command map.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 3h18v18H3z" stroke-linejoin="round"/><path d="M3 9h18M9 21V9"/></svg>
+      </div>
+      <div class="feature-title">Cold Chain Monitor</div>
+      <div class="feature-desc">IoT sensor integration with instant alerts if temperature thresholds are breached in transit.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="feature-title">Analytics Dashboard</div>
+      <div class="feature-desc">Volume forecasting, route efficiency scoring, and farmer payout reconciliation — all in one place.</div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how">
+    <div class="section-eyebrow">
+      <div class="section-eyebrow-line"></div>
+      <span class="section-eyebrow-text">Process Overview</span>
+    </div>
+    <h2 class="section-title">End-to-end visibility across every collection cycle</h2>
+
+    <div class="steps-grid">
+      <div class="step-cell">
+        <div class="step-num">01</div>
+        <span class="step-tag">Farmer</span>
+        <div class="step-title">Morning Dispatch Signal</div>
+        <div class="step-desc">Farmers log milk volume via SMS or the MilkTracker mobile app. The system pre-assigns the nearest available collection vehicle and optimises its route.</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">02</div>
+        <span class="step-tag">In Transit</span>
+        <div class="step-title">Live Route Optimisation</div>
+        <div class="step-desc">GPS telemetry streams to the control centre every 30 seconds. The AI reroutes vehicles around delays and balances collection sequences for maximum cold-chain integrity.</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">03</div>
+        <span class="step-tag">Factory Gate</span>
+        <div class="step-title">Automated Intake & Logging</div>
+        <div class="step-desc">On arrival, RFID tags trigger automatic quality sampling records and volume verification. Farmer payouts are calculated and queued within minutes of each delivery.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD PREVIEW -->
+  <section class="dashboard-section" id="platform">
+    <div class="dashboard-copy">
+      <div class="section-eyebrow">
+        <div class="section-eyebrow-line" style="background:var(--silver)"></div>
+        <span class="section-eyebrow-text" style="color:var(--silver)">Control Centre</span>
+      </div>
+      <h2 class="section-title">One screen. Every truck. Every farm.</h2>
+      <p>The MilkTracker command dashboard gives logistics coordinators a live operational picture — fleet positions, temperature alerts, volume forecasts, and driver communications unified in a single interface designed for rural Sri Lanka's network realities.</p>
+      <a href="#" class="btn-primary" style="margin-top:40px;display:inline-block;">Explore the Platform</a>
+    </div>
+
+    <div class="mock-dashboard">
+      <div class="mock-topbar">
+        <div class="mock-dots">
+          <div class="mock-dot mock-dot-r"></div>
+          <div class="mock-dot mock-dot-y"></div>
+          <div class="mock-dot mock-dot-g"></div>
+        </div>
+        <div class="mock-title">MilkTracker AI · Live Operations</div>
+        <div style="width:44px"></div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-stats-row">
+          <div class="mock-stat">
+            <div class="mock-stat-val">47</div>
+            <div class="mock-stat-lbl">Active Trucks</div>
+          </div>
+          <div class="mock-stat">
+            <div class="mock-stat-val">6,840<span style="font-size:11px;opacity:0.5">L</span></div>
+            <div class="mock-stat-lbl">Collected Today</div>
+          </div>
+          <div class="mock-stat">
+            <div class="mock-stat-val">3</div>
+            <div class="mock-stat-lbl">Alerts Active</div>
+          </div>
+        </div>
+
+        <div class="mock-map">
+          <div class="mock-map-grid"></div>
+          <svg class="mock-route" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M10,80 Q30,60 45,55 Q60,50 75,30 Q85,18 90,15"/>
+            <path d="M15,90 Q25,75 40,65 Q55,55 65,40"/>
+          </svg>
+          <div class="truck-dot" style="left:44%;top:52%"></div>
+          <div class="truck-dot" style="left:72%;top:28%"></div>
+          <div class="truck-dot warning" style="left:62%;top:38%"></div>
+          <div class="truck-dot" style="left:26%;top:66%"></div>
+        </div>
+
+        <div class="mock-table">
+          <div class="mock-table-row">
+            <div>
+              <div class="mock-vehicle">TR-1142</div>
+              <div class="mock-route-lbl">Matale → Digana Factory</div>
+            </div>
+            <span class="mock-badge badge-green">On Time</span>
+          </div>
+          <div class="mock-table-row">
+            <div>
+              <div class="mock-vehicle">TR-0987</div>
+              <div class="mock-route-lbl">Kandy Hills → Peradeniya</div>
+            </div>
+            <span class="mock-badge badge-amber">15 min delay</span>
+          </div>
+          <div class="mock-table-row">
+            <div>
+              <div class="mock-vehicle">TR-1256</div>
+              <div class="mock-route-lbl">Nuwara Eliya → Central Hub</div>
+            </div>
+            <span class="mock-badge badge-blue">Collecting</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFO BAND -->
+  <section class="info-band">
+    <blockquote>
+      Before MilkTracker, our morning was guesswork. Now I know exactly when the truck arrives — and the payout is in my account the same day.
+      <div class="quote-attr">— K. Rajapaksha, Dairy Farmer, Matale District</div>
+    </blockquote>
+
+    <div class="info-divider"></div>
+
+    <ul class="info-list">
+      <li>
+        <div class="info-list-icon">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="info-list-text">
+          <strong>Offline-first mobile app</strong>
+          <span>Works on 2G networks across remote estates. Data syncs automatically when connectivity is restored.</span>
+        </div>
+      </li>
+      <li>
+        <div class="info-list-icon">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="info-list-text">
+          <strong>Sinhala & Tamil language support</strong>
+          <span>Full interface localisation with voice-prompt options for low-literacy farm operators.</span>
+        </div>
+      </li>
+      <li>
+        <div class="info-list-icon">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="info-list-text">
+          <strong>ISO 22000 cold chain compliance</strong>
+          <span>Automated audit trails for every batch from farm to processing plant.</span>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>
+      <div class="footer-brand">Nestlé Lanka PLC</div>
+      <div class="footer-sub">MilkTracker AI · Smart Rural Logistics</div>
+      <div class="footer-legal">© 2025 Nestlé Lanka PLC. All rights reserved.</div>
+    </div>
+    <div class="footer-right" style="text-align:right">
+      <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Use</a>
+        <a href="#">Support</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-legal" style="margin-top:12px">Built with care for Sri Lanka's rural dairy community.</div>
+    </div>
+  </footer>
+
+  <script>
+    // Nav scroll
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 60);
+    });
+
+    // Hero bg zoom on load
+    window.addEventListener('load', () => {
+      document.getElementById('heroBg').classList.add('loaded');
+    });
+
+    // Hamburger / drawer
+    const hamburger = document.getElementById('hamburger');
+    const navDrawer = document.getElementById('navDrawer');
+    hamburger.addEventListener('click', () => {
+      const open = hamburger.classList.toggle('open');
+      navDrawer.classList.toggle('open', open);
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+    // Close drawer when a link is clicked
+    navDrawer.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        hamburger.classList.remove('open');
+        navDrawer.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
+
+    // Fade-in step/feature cells on scroll
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) {
+          e.target.style.opacity = '0';
+          e.target.style.transform = 'translateY(18px)';
+          e.target.style.transition = `opacity 0.6s ${i * 0.08}s ease, transform 0.6s ${i * 0.08}s ease`;
+          requestAnimationFrame(() => {
+            e.target.style.opacity = '1';
+            e.target.style.transform = 'translateY(0)';
+          });
+          obs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.step-cell, .feature-cell').forEach(el => obs.observe(el));
+  </script>
+
+</body>
+</html>

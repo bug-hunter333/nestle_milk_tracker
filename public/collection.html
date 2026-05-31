@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chilling Center Manager | Nestlé Smart Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['DM Sans','sans-serif'], serif: ['Cormorant Garamond','serif'] },
+          animation: {
+            'fade-up': 'fadeUp .65s ease both',
+            'slide-in': 'slideIn .4s cubic-bezier(.34,1.56,.64,1) both',
+            'breathe': 'breathe 3s ease-in-out infinite',
+            'float': 'floatOrb 9s ease-in-out infinite',
+            'float-slow': 'floatOrb 14s ease-in-out infinite 3s',
+            'alert-pulse': 'alertPulse 1.8s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(18px)' }, '100%': { opacity: '1', transform: 'none' } },
+            slideIn: { '0%': { opacity: '0', transform: 'translateY(-12px) scale(.97)' }, '100%': { opacity: '1', transform: 'none' } },
+            breathe: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.72' } },
+            floatOrb: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-22px)' } },
+            alertPulse: { '0%,100%': { boxShadow: '0 0 0 0 rgba(34,197,94,.5)' }, '50%': { boxShadow: '0 0 0 12px rgba(34,197,94,0)' } },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; font-family: 'DM Sans', sans-serif; color: rgba(255,255,255,.92); overflow-x: hidden; }
+    .glass { background: rgba(255,255,255,.07); backdrop-filter: blur(26px) saturate(1.4); -webkit-backdrop-filter: blur(26px) saturate(1.4); border: 1px solid rgba(255,255,255,.13); }
+    .shimmer { position: relative; }
+    .shimmer::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); z-index: 1; pointer-events: none; }
+
+    /* Registration */
+    .reg-card { background: rgba(0,0,0,.25); border: 1.5px dashed rgba(255,255,255,.15); border-radius: 16px; padding: 20px; cursor: pointer; transition: all .25s; }
+    .reg-card:hover { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.04); }
+    .reg-card.registered { border-style: solid; border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.07); cursor: default; }
+
+    /* Status stepper */
+    .step-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.3); background: rgba(0,0,0,.25); transition: all .4s; position: relative; z-index: 1; flex-shrink: 0; }
+    .step-circle.done { background: rgba(34,197,94,.18); border-color: #22c55e; color: #4ade80; }
+    .step-circle.active { background: rgba(96,165,250,.18); border-color: #60a5fa; color: #93c5fd; }
+    .step-line { flex: 1; height: 2px; background: rgba(255,255,255,.1); transition: background .4s; }
+    .step-line.done { background: #22c55e; }
+
+    /* Request item */
+    .req-item { background: rgba(0,0,0,.28); border: 1.5px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; transition: all .3s; }
+    .req-item.new-alert { border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.07); animation: alertPulse 1.8s ease-in-out infinite; }
+    @keyframes alertPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.4); } 50% { box-shadow: 0 0 0 10px rgba(34,197,94,0); } }
+
+    /* Status badges */
+    .s-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .s-req { background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.3); color: #93c5fd; }
+    .s-assigned { background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.3); color: #c4b5fd; }
+    .s-enroute { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; }
+    .s-arrived { background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.3); color: #67e8f9; }
+    .s-loaded { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+    .s-delivered { background: rgba(34,197,94,.22); border: 1px solid rgba(34,197,94,.5); color: #4ade80; }
+
+    /* Buttons */
+    .btn-confirm { width: 100%; padding: 15px 20px; background: linear-gradient(135deg,#15803d,#22c55e); border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: white; cursor: pointer; box-shadow: 0 10px 28px rgba(34,197,94,.4); transition: all .22s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-confirm:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 38px rgba(34,197,94,.55); }
+    .btn-confirm:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .btn-register { width: 100%; padding: 15px 20px; background: linear-gradient(135deg,#0369a1,#0ea5e9); border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: white; cursor: pointer; box-shadow: 0 10px 28px rgba(14,165,233,.4); transition: all .22s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
+    .btn-register:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-register:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Field label */
+    .f-label { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 9px; display: flex; align-items: center; gap: 8px; }
+    .f-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.1); }
+
+    /* Notification feed */
+    .notif-entry { padding: 10px 12px; border-radius: 11px; margin-bottom: 7px; display: flex; gap: 10px; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.07); }
+    .notif-icon-wrap { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; }
+    .notif-icon-wrap.request { background: rgba(96,165,250,.12); }
+    .notif-icon-wrap.assign  { background: rgba(139,92,246,.12); }
+    .notif-icon-wrap.arrive  { background: rgba(34,211,238,.12); }
+    .notif-icon-wrap.deliver { background: rgba(34,197,94,.12); }
+    .notif-icon-wrap.alert   { background: rgba(239,68,68,.12); }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(0,12,28,.96); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 13px 20px; font-size: 13px; color: rgba(255,255,255,.92); display: flex; align-items: center; gap: 10px; transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s; opacity: 0; z-index: 9000; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Spinner */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.25); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+    .s1 { animation: fadeUp .65s .04s ease both; }
+    .s2 { animation: fadeUp .65s .13s ease both; }
+    .s3 { animation: fadeUp .65s .22s ease both; }
+    .s4 { animation: fadeUp .65s .31s ease both; }
+    .s5 { animation: fadeUp .65s .40s ease both; }
+    .s6 { animation: fadeUp .65s .49s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+    /* new-request banner */
+    .new-req-banner { display: none; position: sticky; top: 56px; z-index: 200; margin: -4px 0 10px; border-radius: 14px; padding: 12px 16px; background: rgba(34,197,94,.14); border: 1.5px solid rgba(34,197,94,.5); box-shadow: 0 0 24px rgba(34,197,94,.18); animation: breathe 2.5s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .78; } }
+    .new-req-banner.show { display: flex; }
+  </style>
+</head>
+<body style="background:radial-gradient(ellipse at 30% 15%,#001a2e 0%,#000d1a 60%,#001020 100%);">
+
+<!-- BG Orbs -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="absolute rounded-full animate-float" style="width:380px;height:380px;background:rgba(34,197,94,.12);top:-100px;right:-80px;filter:blur(80px);"></div>
+  <div class="absolute rounded-full animate-float-slow" style="width:280px;height:280px;background:rgba(0,86,150,.15);bottom:-60px;left:-60px;filter:blur(80px);"></div>
+  <div class="absolute inset-0 opacity-[.035]" style="background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);background-size:40px 40px;"></div>
+</div>
+
+<div class="relative z-10 min-h-screen flex flex-col items-center px-4 pb-12">
+
+  <!-- NAV -->
+  <nav class="w-full max-w-[600px] flex items-center justify-between pt-5 pb-0 mb-6 s1" style="position:sticky;top:0;z-index:100;background:rgba(0,10,24,.7);backdrop-filter:blur(16px);padding-left:0;padding-right:0;padding-top:14px;padding-bottom:14px;">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style="border:1px solid rgba(34,197,94,.45);background:rgba(34,197,94,.1);">
+        <svg class="w-4 h-4" fill="rgba(34,197,94,.9)" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5 5.2 3 6.5 3 9c0 2 1.5 3.5 3.5 3.5H17c2 0 4-1.5 4-4 0-2-1.5-3.5-3.5-3.5-.5 0-1 .1-1.5.3C15 3.2 13.5 2 12 2z"/></svg>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-[.18em] uppercase" style="color:rgba(255,255,255,.4);">Nestlé Lanka PLC</div>
+        <div class="text-[12px] font-semibold" id="centerNameNav">Chilling Center Manager</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="connBadge" class="text-[9px] px-2.5 py-1 rounded-full font-semibold tracking-[.1em] uppercase" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24;">…</div>
+      <div id="userAvatar" class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style="background:linear-gradient(135deg,#15803d,#22c55e);border:1.5px solid rgba(255,255,255,.18);">C</div>
+      <button id="logoutBtn" class="text-[10px] px-3 py-1.5 rounded-lg" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- NEW REQUEST ALERT BANNER (sticky) -->
+  <div id="newReqBanner" class="new-req-banner w-full max-w-[600px] items-center gap-3">
+    <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(34,197,94,.2);">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#4ade80" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+    </div>
+    <span id="newReqBannerText" class="text-[12px] font-semibold flex-1" style="color:#4ade80;">New milk request received from Nestlé Pannala!</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full" style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#4ade80;font-weight:600;">NEW</span>
+  </div>
+
+  <!-- ① REGISTRATION -->
+  <div class="w-full max-w-[600px] mb-5 s2" id="registrationSection">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 30px 80px rgba(0,0,0,.45);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-[9px] flex items-center justify-center flex-shrink-0" style="background:rgba(14,165,233,.15);border:1px solid rgba(14,165,233,.25);">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#38bdf8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+          </div>
+          <span class="text-[12px] font-semibold">Register Your Chilling Center</span>
+          <div id="regStatus" class="hidden text-[9px] px-2 py-0.5 rounded-full font-bold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;">✓ Registered</div>
+        </div>
+
+        <div id="regForm">
+          <div class="f-label">Center Name</div>
+          <input id="regName" type="text" placeholder="e.g. Kaduwela Dairy Center" class="w-full px-4 py-3.5 rounded-[12px] mb-3 text-[14px]" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.9);font-family:'DM Sans',sans-serif;outline:none;" />
+          <div class="f-label">Location (auto-detected or manual)</div>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="relative">
+              <input id="regLat" type="number" step="0.0001" placeholder="Latitude" class="w-full px-4 py-3 rounded-[12px] text-[13px]" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.9);font-family:'DM Sans',sans-serif;outline:none;"/>
+            </div>
+            <div class="relative">
+              <input id="regLng" type="number" step="0.0001" placeholder="Longitude" class="w-full px-4 py-3 rounded-[12px] text-[13px]" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.9);font-family:'DM Sans',sans-serif;outline:none;"/>
+            </div>
+          </div>
+          <button id="detectLocBtn" class="w-full py-2.5 rounded-[10px] mb-1 text-[11px] font-semibold tracking-[.08em] uppercase" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.55);">
+            📍 Detect My Location
+          </button>
+          <div id="gpsStatus" class="text-[10px] mb-3 text-center hidden" style="color:rgba(255,255,255,.4);"></div>
+          <button id="registerBtn" class="btn-register" disabled>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Register Chilling Center
+          </button>
+        </div>
+
+        <div id="regInfo" class="hidden">
+          <div class="flex items-center gap-3 p-3 rounded-[12px]" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(34,197,94,.15);">
+              <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="#4ade80" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+            </div>
+            <div>
+              <div id="regInfoName" class="text-[13px] font-semibold" style="color:#4ade80;">—</div>
+              <div id="regInfoCoords" class="text-[10px] mt-0.5 font-mono" style="color:rgba(255,255,255,.4);">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② ACTIVE REQUEST SUMMARY -->
+  <div class="w-full max-w-[600px] mb-5 s3">
+    <div id="activeReqCard" class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25);">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#fbbf24" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 8h4l3 4v5h-7V8z"/></svg>
+          </div>
+          <span class="text-[12px] font-semibold">Active Request Summary</span>
+        </div>
+        <div id="activeReqBody">
+          <div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No active request at this time.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ DRIVER ARRIVAL CONFIRMATION -->
+  <div id="arrivalConfirmPanel" class="w-full max-w-[600px] mb-5 s4 hidden">
+    <div class="rounded-[22px] overflow-hidden" style="background:rgba(34,211,238,.08);border:1.5px solid rgba(34,211,238,.4);box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-2 h-2 rounded-full" style="background:#22d3ee;box-shadow:0 0 7px #22d3ee;animation:breathe 1.5s ease-in-out infinite;"></div>
+          <span class="text-[12px] font-semibold" style="color:#67e8f9;">Driver Has Arrived at Your Center</span>
+        </div>
+        <p id="arrivalDesc" class="text-[12px] mb-4" style="color:rgba(255,255,255,.55);">Confirm the driver's arrival so the Fleet Manager is notified and the milk loading can begin.</p>
+        <button id="confirmArrivalBtn" class="btn-confirm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          Confirm Driver Arrived — Ready for Pickup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ INCOMING REQUESTS -->
+  <div class="w-full max-w-[600px] mb-5 s4">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-2">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.25);">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M12 3v8.25m0 0l-3-3m3 3l3-3"/></svg>
+            </div>
+            <span class="text-[12px] font-semibold">Incoming Requests from Nestlé Pannala</span>
+            <div id="incomingBadge" class="hidden text-[9px] px-2 py-0.5 rounded-full font-bold" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#f87171;">0 new</div>
+          </div>
+          <span class="text-[9px] tracking-[.1em] uppercase font-medium" style="color:rgba(255,255,255,.3);">Real-time</span>
+        </div>
+        <div id="incomingRequestsList" class="pb-3">
+          <div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No requests yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ REQUEST STATUS TRACKER -->
+  <div class="w-full max-w-[600px] mb-5 s5">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#a78bfa" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z"/></svg>
+          </div>
+          <span class="text-[12px] font-semibold">Request Status Tracker</span>
+        </div>
+        <div id="statusTrackerBody">
+          <div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No active request to track.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ NOTIFICATION FEED -->
+  <div class="w-full max-w-[600px] s6">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25);">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#fbbf24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+            </div>
+            <span class="text-[12px] font-semibold">Event Log</span>
+          </div>
+          <span class="text-[9px] tracking-[.1em] uppercase font-medium" style="color:rgba(255,255,255,.3);">All events · real-time</span>
+        </div>
+        <div id="notifFeed">
+          <div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">Events will appear here in real time.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  /* ── Firebase Init ── */
+  const FB = {
+    apiKey: "AIzaSyDtTMrEGjIJ5aJYNJQnARXxXrJDnEUt4vM",
+    authDomain: "rural-logistics-app.firebaseapp.com",
+    databaseURL: "https://rural-logistics-app-default-rtdb.firebaseio.com",
+    projectId: "rural-logistics-app",
+    storageBucket: "rural-logistics-app.firebasestorage.app",
+    messagingSenderId: "684830139102",
+    appId: "1:684830139102:web:850e4e5802aac76335584f"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(FB);
+  const db   = firebase.database();
+  const auth = firebase.auth();
+
+  /* ── Connection badge ── */
+  db.ref('.info/connected').on('value', s => {
+    const el = document.getElementById('connBadge');
+    if (s.val()) { el.textContent = 'Live'; el.style.background = 'rgba(34,197,94,.12)'; el.style.borderColor = 'rgba(34,197,94,.35)'; el.style.color = '#4ade80'; }
+    else         { el.textContent = 'Offline'; el.style.background = 'rgba(240,80,80,.12)'; el.style.borderColor = 'rgba(240,80,80,.3)'; el.style.color = '#f87171'; }
+  });
+
+  /* ── Toast ── */
+  let _toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 4200);
+  }
+
+  /* ── State ── */
+  let myUid = null;
+  let myCenterId = null;
+  let myCenterName = null;
+  let myCenterLat = null;
+  let myCenterLng = null;
+  let myCenterRegistered = false;
+  let notifLog = [];
+  let pendingArrivalRequestId = null;
+
+  /* ── Steps for center-side tracker ── */
+  const STEPS = [
+    { key: 'REQUESTED',       label: 'Requested' },
+    { key: 'DRIVER_ASSIGNED', label: 'Driver\nAssigned' },
+    { key: 'DRIVER_EN_ROUTE', label: 'En Route' },
+    { key: 'DRIVER_ARRIVED',  label: 'Arrived' },
+    { key: 'MILK_LOADED',     label: 'Loaded' },
+    { key: 'DELIVERED',       label: 'Delivered' }
+  ];
+
+  function mapMilkReqStatusToStep(status) {
+    const map = {
+      SENT: 'REQUESTED', NOTIFIED: 'REQUESTED',
+      DRIVER_ASSIGNED: 'DRIVER_ASSIGNED',
+      DRIVER_EN_ROUTE: 'DRIVER_EN_ROUTE',
+      PICKED_UP: 'MILK_LOADED',
+      DELIVERED: 'DELIVERED'
+    };
+    return map[status] || 'REQUESTED';
+  }
+
+  function stepIndex(key) { return STEPS.findIndex(s => s.key === key); }
+
+  function buildStepper(currentKey) {
+    const cur = stepIndex(currentKey);
+    let html = '<div class="flex items-center gap-0">';
+    STEPS.forEach((s, i) => {
+      const isDone   = i < cur;
+      const isActive = i === cur;
+      html += `<div class="flex flex-col items-center gap-1 flex-shrink-0">
+        <div class="step-circle ${isDone ? 'done' : (isActive ? 'active' : '')}">${isDone ? '✓' : i+1}</div>
+        <div class="text-[8px] text-center max-w-[44px] leading-tight" style="color:${isDone ? '#4ade80' : (isActive ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.3)')};white-space:pre-line;">${s.label}</div>
+      </div>`;
+      if (i < STEPS.length - 1) html += `<div class="step-line ${isDone ? 'done' : ''}" style="margin-bottom:18px;"></div>`;
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /* ── Status badge ── */
+  function statusBadgeHtml(status) {
+    const cls = { SENT:'s-req', NOTIFIED:'s-req', DRIVER_ASSIGNED:'s-assigned', DRIVER_EN_ROUTE:'s-enroute', DRIVER_ARRIVED:'s-arrived', PICKED_UP:'s-loaded', MILK_LOADED:'s-loaded', DELIVERED:'s-delivered' }[status] || 's-req';
+    return `<span class="s-badge ${cls}">${(status||'').replace(/_/g,' ')}</span>`;
+  }
+
+  /* ── Add event to notification log ── */
+  function addNotifEntry(icon, cls, title, time) {
+    const feed = document.getElementById('notifFeed');
+    if (feed.querySelector('.text-center')) feed.innerHTML = '';
+    const entry = document.createElement('div');
+    entry.className = 'notif-entry animate-slide-in';
+    entry.innerHTML = `
+      <div class="notif-icon-wrap ${cls}">${icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[12px] font-medium leading-snug">${title}</div>
+        <div class="text-[10px] mt-0.5 font-mono" style="color:rgba(255,255,255,.35);">${time}</div>
+      </div>`;
+    feed.insertBefore(entry, feed.firstChild);
+  }
+
+  /* ── Register Center ── */
+  document.getElementById('regName').addEventListener('input', validateReg);
+  document.getElementById('regLat').addEventListener('input', validateReg);
+  document.getElementById('regLng').addEventListener('input', validateReg);
+  function validateReg() {
+    const n = document.getElementById('regName').value.trim();
+    const la = parseFloat(document.getElementById('regLat').value);
+    const ln = parseFloat(document.getElementById('regLng').value);
+    document.getElementById('registerBtn').disabled = !n || !isFinite(la) || !isFinite(ln);
+  }
+
+  document.getElementById('detectLocBtn').addEventListener('click', () => {
+    const status = document.getElementById('gpsStatus');
+    status.textContent = 'Detecting…';
+    status.classList.remove('hidden');
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('regLat').value = pos.coords.latitude.toFixed(5);
+      document.getElementById('regLng').value = pos.coords.longitude.toFixed(5);
+      status.textContent = `📍 ${pos.coords.latitude.toFixed(4)}° N  ${pos.coords.longitude.toFixed(4)}° E`;
+      validateReg();
+    }, () => {
+      status.textContent = 'Location access denied. Enter manually.';
+    });
+  });
+
+  document.getElementById('registerBtn').addEventListener('click', async () => {
+    if (!myUid) return;
+    const name  = document.getElementById('regName').value.trim();
+    const lat   = parseFloat(document.getElementById('regLat').value);
+    const lng   = parseFloat(document.getElementById('regLng').value);
+    const btn   = document.getElementById('registerBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Registering…';
+
+    try {
+      // Use uid as center id
+      myCenterId = myUid;
+      myCenterName = name;
+      await db.ref(`chilling_centers/${myCenterId}`).set({
+        name, lat, lng, managerId: myUid, registeredAt: Date.now()
+      });
+      showRegistered(name, lat, lng);
+      showToast(`${name} registered successfully`);
+      addNotifEntry('📍', 'arrive', `Center registered: ${name}`, new Date().toLocaleTimeString());
+    } catch (err) {
+      showToast('Registration failed: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Register Chilling Center';
+    }
+  });
+
+  function showRegistered(name, lat, lng) {
+    myCenterLat = parseFloat(lat);
+    myCenterLng = parseFloat(lng);
+    document.getElementById('regForm').classList.add('hidden');
+    document.getElementById('regInfo').classList.remove('hidden');
+    document.getElementById('regStatus').classList.remove('hidden');
+    document.getElementById('regInfoName').textContent = name;
+    document.getElementById('regInfoCoords').textContent = `${parseFloat(lat).toFixed(4)}° N  ${parseFloat(lng).toFixed(4)}° E`;
+    document.getElementById('centerNameNav').textContent = name;
+    myCenterRegistered = true;
+    startCenterListeners();
+  }
+
+  /* ── Accept incoming milk request — signal FM to dispatch ── */
+  async function acceptRequest(requestId, litres) {
+    if (!myCenterId || !myCenterName) { showToast('Register your center first'); return; }
+    const btn = document.querySelector(`[data-accept="${requestId}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
+    try {
+      const now = Date.now();
+      await db.ref(`milk_requests/${requestId}`).update({ status: 'CENTER_ACCEPTED', centerAcceptedAt: now });
+      // Write collection_requests/active so the FM's existing dispatch-alert fires
+      await db.ref('collection_requests/active').set({
+        centerId:      myCenterId,
+        center_name:   myCenterName,
+        lat:           myCenterLat,
+        lng:           myCenterLng,
+        volume:        litres,
+        priority:      'NORMAL',
+        status:        'PENDING_DISPATCH',
+        milkRequestId: requestId,
+        timestamp:     now
+      });
+      await db.ref('fleet_manager_notifications').push({
+        type: 'CENTER_READY', requestId, centerName: myCenterName, litres,
+        message: `${myCenterName} is ready — dispatch a truck for ${litres} L`,
+        timestamp: now, read: false
+      });
+      addNotifEntry('✅', 'deliver', `Request accepted — FM notified to dispatch truck`, new Date(now).toLocaleTimeString());
+      showToast('Request accepted — Fleet Manager will dispatch a truck');
+    } catch (err) {
+      showToast('Error: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'Accept Request'; }
+    }
+  }
+  window.acceptRequest = acceptRequest;
+
+  /* ── Center-specific listeners ── */
+  let _centerListenersStarted = false;
+  let _lastCollectedAt = null;
+
+  function startCenterListeners() {
+    if (!myCenterId) return;
+    if (_centerListenersStarted) return;
+    _centerListenersStarted = true;
+
+    // Listen for notifications sent to this center
+    db.ref(`chilling_center_notifications/${myCenterId}`).orderByChild('timestamp').on('value', snap => {
+      const data = snap.val() || {};
+      const entries = Object.entries(data).sort((a, b) => (b[1].timestamp||0) - (a[1].timestamp||0));
+      const unread = entries.filter(([,n]) => !n.read).length;
+
+      document.getElementById('incomingBadge').textContent = unread + ' new';
+      document.getElementById('incomingBadge').classList.toggle('hidden', !unread);
+
+      const banner = document.getElementById('newReqBanner');
+      if (unread > 0) {
+        banner.classList.add('show');
+        const latest = entries[0];
+        if (latest) {
+          document.getElementById('newReqBannerText').textContent =
+            `New request: ${latest[1].litres || '?'} L needed from Nestlé Pannala`;
+        }
+      } else {
+        banner.classList.remove('show');
+      }
+
+      renderIncomingRequests(entries);
+    });
+
+    // Listen for milk_requests where this center is involved (by centerId matching uid or myCenterId)
+    db.ref('milk_requests').on('value', snap => {
+      const data = snap.val() || {};
+      // Find requests for this center
+      const myRequests = Object.entries(data).filter(([,r]) =>
+        r.centerId === myCenterId || r.centerId === myCenterName
+      ).sort((a,b) => (b[1].timestamp||0) - (a[1].timestamp||0));
+
+      renderActiveReqSummary(myRequests);
+      renderStatusTracker(myRequests);
+      checkDriverArrival(myRequests);
+    });
+
+    // Watch driver_assignments for a driver heading to this center
+    db.ref('driver_assignments').on('value', snap => {
+      const data = snap.val() || {};
+      for (const [uid, a] of Object.entries(data)) {
+        if ((a.centerId === myCenterId || a.center_name === myCenterName) && a.status === 'ASSIGNED') {
+          addNotifEntry('🚛', 'assign', `Driver ${a.driver_name || uid} assigned to your center`, new Date().toLocaleTimeString());
+          // Update milk_requests status to DRIVER_ASSIGNED
+          db.ref('milk_requests').orderByChild('centerId').equalTo(myCenterId).once('value', req => {
+            const entries = req.val() || {};
+            for (const [rid, rval] of Object.entries(entries)) {
+              if (rval.status === 'NOTIFIED' || rval.status === 'SENT') {
+                db.ref(`milk_requests/${rid}`).update({
+                  status: 'DRIVER_ASSIGNED',
+                  driverUid: uid,
+                  driverName: a.driver_name || null
+                });
+              }
+            }
+          });
+        }
+        if ((a.centerId === myCenterId || a.center_name === myCenterName) && a.status === 'EN_ROUTE') {
+          addNotifEntry('🚛', 'arrive', `Driver ${a.driver_name || uid} is now en route`, new Date().toLocaleTimeString());
+        }
+        if ((a.centerId === myCenterId || a.center_name === myCenterName) && (a.status === 'ARRIVED' || a.status === 'APPROACHING')) {
+          addNotifEntry('📍', 'arrive', `Driver ${a.driver_name || uid} has arrived at your center`, new Date().toLocaleTimeString());
+        }
+      }
+    });
+
+    // Watch locations/{myCenterId} — written by the driver when milk is collected.
+    // React immediately: advance stepper to MILK_LOADED and update milk_requests so
+    // the Nestlé center page also reflects the status change in real time.
+    db.ref('locations/' + myCenterId).on('value', snap => {
+      const loc = snap.val();
+      if (!loc || loc.status !== 'COLLECTED') return;
+      // De-dupe — only react once per distinct collection event
+      if (loc.collectedAt === _lastCollectedAt) return;
+      _lastCollectedAt = loc.collectedAt;
+
+      const timeStr = new Date(loc.collectedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      addNotifEntry('✅', 'deliver',
+        `Milk collected by ${loc.collectedBy || 'driver'} — ${loc.milkQuantity || '?'} L · En route to ${loc.deliveryHubName || 'Nestlé'}`,
+        timeStr
+      );
+
+      // Advance milk_requests status → PICKED_UP so the stepper ticks to MILK_LOADED
+      // and the Nestlé center page checkPendingConfirm() fires automatically.
+      db.ref('milk_requests').orderByChild('centerId').equalTo(myCenterId).once('value', snap2 => {
+        const entries = snap2.val() || {};
+        for (const [rid, rval] of Object.entries(entries)) {
+          if (rval.status !== 'DELIVERED' && rval.status !== 'PICKED_UP') {
+            db.ref('milk_requests/' + rid).update({
+              status: 'PICKED_UP',
+              pickedUpAt: loc.collectedAt || Date.now(),
+              driverName: loc.collectedBy || rval.driverName || null
+            }).catch(() => {});
+          }
+        }
+      });
+    });
+
+    // ── Incident listener: alert this chilling center if driver had an incident ──
+    // Watches for any incident where the original_assignment.centerId matches this center.
+    // Uses a snapshot scan because Firebase RTDB doesn't support composite queries.
+    db.ref('incidents').on('value', incSnap => {
+      const incidents = incSnap.val() || {};
+      let foundIncident = null;
+      for (const [id, inc] of Object.entries(incidents)) {
+        const oa = inc.original_assignment || {};
+        if (oa.centerId === myCenterId && (inc.status === 'REPORTED' || inc.status === 'BACKUP_ASSIGNED')) {
+          foundIncident = { id, ...inc };
+          break;
+        }
+      }
+      const existing = document.getElementById('incidentStatusBanner');
+      if (!foundIncident) {
+        if (existing) existing.remove();
+        return;
+      }
+      const bannerHtml = foundIncident.status === 'BACKUP_ASSIGNED'
+        ? `<div id="incidentStatusBanner" style="margin:8px 0;padding:10px 14px;border-radius:10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);font-size:11px;color:rgba(255,255,255,.8);">
+             ✅ <b>Trip Interrupted — Backup Driver Assigned</b><br>
+             <span style="color:rgba(255,255,255,.55);">${foundIncident.backup_driver_name || 'Backup driver'} is en route to complete the delivery.</span>
+           </div>`
+        : `<div id="incidentStatusBanner" style="margin:8px 0;padding:10px 14px;border-radius:10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);font-size:11px;color:rgba(255,255,255,.8);">
+             ⚠ <b>Trip Interrupted — Awaiting Backup Driver</b><br>
+             <span style="color:rgba(255,255,255,.55);">The assigned driver reported an incident. Fleet Manager is dispatching a backup driver.</span>
+           </div>`;
+      if (existing) {
+        existing.outerHTML = bannerHtml;
+      } else {
+        const notifFeed = document.getElementById('notifFeed');
+        if (notifFeed) notifFeed.insertAdjacentHTML('afterbegin', bannerHtml);
+      }
+    });
+  }
+
+  function renderIncomingRequests(entries) {
+    const list = document.getElementById('incomingRequestsList');
+    if (!entries.length) {
+      list.innerHTML = '<div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No requests yet.</div>';
+      return;
+    }
+    list.innerHTML = entries.slice(0, 10).map(([id, n]) => {
+      const isNew = !n.read;
+      const t = new Date(n.timestamp).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const showAccept = isNew && n.requestId && n.litres;
+      return `
+        <div class="req-item ${isNew ? 'new-alert' : ''}">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="text-[12px] font-semibold">${n.message || 'New milk request'}</div>
+              <div class="text-[11px] mt-0.5" style="color:rgba(255,255,255,.4);">${t}</div>
+            </div>
+            <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+              ${n.litres ? `<span class="text-[11px] font-bold" style="color:rgba(255,255,255,.7);">${n.litres} L</span>` : ''}
+              ${isNew ? `<span class="text-[8px] px-2 py-0.5 rounded-full font-bold" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#f87171;">NEW</span>` : ''}
+            </div>
+          </div>
+          ${showAccept ? `<button data-accept="${n.requestId}" onclick="acceptRequest('${n.requestId}', ${n.litres})" class="btn-confirm mt-2" style="padding:9px 14px;font-size:11px;letter-spacing:.06em;">✓ Accept — Ready for Collection</button>` : ''}
+        </div>`;
+    }).join('');
+
+    // Mark notifications as read after 3s
+    setTimeout(() => {
+      entries.forEach(([id, n]) => {
+        if (!n.read) db.ref(`chilling_center_notifications/${myCenterId}/${id}/read`).set(true);
+      });
+    }, 3000);
+  }
+
+  function renderActiveReqSummary(myReqs) {
+    const el = document.getElementById('activeReqBody');
+    const active = myReqs.filter(([,r]) => r.status !== 'DELIVERED');
+    if (!active.length) {
+      el.innerHTML = '<div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No active request at this time.</div>';
+      return;
+    }
+    const [id, req] = active[0];
+    const canAccept = (req.status === 'SENT' || req.status === 'NOTIFIED') && !req.centerAcceptedAt;
+    el.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <div class="text-[11px]" style="color:rgba(255,255,255,.4);">Requested by Nestlé Pannala</div>
+          <div class="text-[18px] font-bold mt-0.5" style="color:rgba(255,255,255,.9);">${req.litres} <span class="text-[12px] font-normal" style="color:rgba(255,255,255,.5);">litres</span></div>
+        </div>
+        ${statusBadgeHtml(req.status)}
+      </div>
+      ${req.driverName ? `<div class="text-[11px] px-3 py-2 rounded-xl mb-2" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:rgba(255,255,255,.7);">Driver assigned: <strong style="color:#fbbf24;">${req.driverName}</strong></div>` : ''}
+      ${canAccept ? `<button data-accept="${id}" onclick="acceptRequest('${id}', ${req.litres})" class="btn-confirm mb-2" style="padding:11px 14px;font-size:12px;letter-spacing:.06em;">✓ Accept — Notify Fleet Manager to Dispatch</button>` : ''}
+      <div class="text-[10px]" style="color:rgba(255,255,255,.35);">Request ID: ${id} · ${new Date(req.timestamp).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`;
+  }
+
+  function renderStatusTracker(myReqs) {
+    const el = document.getElementById('statusTrackerBody');
+    const active = myReqs.filter(([,r]) => r.status !== 'DELIVERED');
+    if (!active.length) {
+      el.innerHTML = '<div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No active request to track.</div>';
+      return;
+    }
+    const [id, req] = active[0];
+    const stepKey = mapMilkReqStatusToStep(req.status);
+    el.innerHTML = buildStepper(stepKey);
+  }
+
+  function checkDriverArrival(myReqs) {
+    const panel = document.getElementById('arrivalConfirmPanel');
+    const desc  = document.getElementById('arrivalDesc');
+    // Show confirmation if there's a DRIVER_EN_ROUTE request (driver is on the way)
+    // The actual arrival trigger comes from driver_assignments ARRIVED status
+    const arriving = myReqs.filter(([,r]) => r.status === 'DRIVER_EN_ROUTE' && !r.centerConfirmed);
+    if (arriving.length) {
+      const [id, req] = arriving[0];
+      pendingArrivalRequestId = id;
+      desc.textContent = `Driver ${req.driverName || ''} is en route and will arrive soon. Confirm their arrival when they reach your gate.`;
+      panel.classList.remove('hidden');
+    } else {
+      pendingArrivalRequestId = null;
+      panel.classList.add('hidden');
+    }
+  }
+
+  /* ── Confirm Arrival ── */
+  document.getElementById('confirmArrivalBtn').addEventListener('click', async () => {
+    if (!pendingArrivalRequestId) return;
+    const btn = document.getElementById('confirmArrivalBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Confirming…';
+
+    try {
+      const now = Date.now();
+      // Mark center confirmed in milk_request
+      await db.ref(`milk_requests/${pendingArrivalRequestId}`).update({
+        centerConfirmed: true,
+        centerConfirmedAt: now
+      });
+
+      // Notify fleet manager
+      await db.ref('fleet_manager_notifications').push({
+        type: 'DRIVER_ARRIVED_AT_CENTER',
+        requestId: pendingArrivalRequestId,
+        centerName: myCenterName,
+        message: `Driver arrived at ${myCenterName} — pickup ready`,
+        timestamp: now,
+        read: false
+      });
+
+      addNotifEntry('✓', 'deliver', 'Driver arrival confirmed — Fleet Manager notified', new Date(now).toLocaleTimeString());
+      showToast('Arrival confirmed — Fleet Manager notified ✓');
+      document.getElementById('arrivalConfirmPanel').classList.add('hidden');
+      pendingArrivalRequestId = null;
+    } catch (err) {
+      showToast('Error: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>Confirm Driver Arrived — Ready for Pickup';
+    }
+  });
+
+  /* ── Check for existing registration ── */
+  function checkExistingRegistration() {
+    db.ref(`chilling_centers/${myUid}`).once('value', snap => {
+      const data = snap.val();
+      if (data && data.name) {
+        myCenterId = myUid;
+        myCenterName = data.name;
+        document.getElementById('regName').value = data.name;
+        document.getElementById('regLat').value = data.lat;
+        document.getElementById('regLng').value = data.lng;
+        showRegistered(data.name, data.lat, data.lng);
+      }
+    });
+  }
+
+  /* ── Auth ── */
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    auth.signOut().then(() => location.href = 'login.html');
+  });
+
+  auth.onAuthStateChanged(user => {
+    if (!user) { location.href = 'login.html'; return; }
+    myUid = user.uid;
+
+    // Verify role — redirect wrong roles away
+    db.ref('users/' + myUid + '/role').once('value', snap => {
+      const role = snap.val();
+      if (role && role !== 'chilling_center') {
+        // Redirect other roles to their home page
+        const dashMap = { manager: 'dashboard.html', center: 'center.html', driver: 'driver.html' };
+        location.href = dashMap[role] || 'login.html';
+        return;
+      }
+      const initials = (user.email || 'CM').slice(0, 2).toUpperCase();
+      document.getElementById('userAvatar').textContent = initials;
+      checkExistingRegistration();
+    });
+  });
+</script>
+</body>
+</html>

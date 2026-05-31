@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nestlé Main Center — Pannala | Operator Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['DM Sans', 'sans-serif'], serif: ['Cormorant Garamond', 'serif'] },
+          animation: {
+            'fade-up': 'fadeUp .65s ease both',
+            'slide-in': 'slideIn .4s cubic-bezier(.34,1.56,.64,1) both',
+            'breathe': 'breathe 3s ease-in-out infinite',
+            'float': 'floatOrb 9s ease-in-out infinite',
+            'float-slow': 'floatOrb 14s ease-in-out infinite 3s',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(18px)' }, '100%': { opacity: '1', transform: 'none' } },
+            slideIn: { '0%': { opacity: '0', transform: 'translateY(-12px) scale(.97)' }, '100%': { opacity: '1', transform: 'none' } },
+            breathe: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.72' } },
+            floatOrb: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-22px)' } },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; font-family: 'DM Sans', sans-serif; color: rgba(255,255,255,.92); overflow-x: hidden; }
+    .glass { background: rgba(255,255,255,.07); backdrop-filter: blur(26px) saturate(1.4); -webkit-backdrop-filter: blur(26px) saturate(1.4); border: 1px solid rgba(255,255,255,.13); }
+    .glass-dark { background: rgba(0,10,24,.88); backdrop-filter: blur(28px) saturate(1.4); -webkit-backdrop-filter: blur(28px) saturate(1.4); border: 1px solid rgba(255,255,255,.12); }
+    .shimmer { position: relative; }
+    .shimmer::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); z-index: 1; pointer-events: none; }
+
+    /* Status stepper */
+    .step-track { display: flex; align-items: center; gap: 0; position: relative; }
+    .step-node { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+    .step-circle { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.3); background: rgba(0,0,0,.25); transition: all .4s; position: relative; z-index: 1; }
+    .step-circle.done { background: rgba(34,197,94,.18); border-color: #22c55e; color: #4ade80; }
+    .step-circle.active { background: rgba(96,165,250,.18); border-color: #60a5fa; color: #93c5fd; animation: breathe 2s ease-in-out infinite; }
+    .step-label { font-size: 8px; color: rgba(255,255,255,.35); letter-spacing: .06em; text-align: center; max-width: 52px; line-height: 1.25; transition: color .3s; }
+    .step-label.active { color: rgba(255,255,255,.7); }
+    .step-label.done { color: #4ade80; }
+    .step-line { flex: 1; height: 2px; background: rgba(255,255,255,.1); margin: 0 2px; transition: background .4s; margin-bottom: 18px; }
+    .step-line.done { background: #22c55e; }
+
+    /* Request card */
+    .req-card { background: rgba(0,0,0,.28); border: 1.5px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px 16px; transition: all .22s; }
+    .req-card:hover { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.05); }
+    .req-card.active-req { border-color: rgba(96,165,250,.4); background: rgba(96,165,250,.05); }
+    .req-card.delivered { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.06); }
+
+    /* Select dropdown */
+    .styled-select { width: 100%; padding: 14px 16px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; color: rgba(255,255,255,.92); font-family: 'DM Sans', sans-serif; font-size: 14px; transition: all .22s; -webkit-appearance: none; cursor: pointer; }
+    .styled-select:focus { outline: none; background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.3); box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
+    .styled-select option { background: #001426; color: rgba(255,255,255,.9); }
+
+    /* Number input */
+    .num-input { width: 100%; padding: 14px 56px 14px 16px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; color: rgba(255,255,255,.92); font-family: 'DM Sans', sans-serif; font-size: 16px; transition: all .22s; -moz-appearance: textfield; }
+    .num-input::-webkit-inner-spin-button, .num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .num-input::placeholder { color: rgba(255,255,255,.28); }
+    .num-input:focus { outline: none; background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.3); box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
+
+    /* Field label */
+    .f-label { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .f-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.1); }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 16px 24px; background: linear-gradient(135deg,#1d4ed8,#3b82f6); border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: white; cursor: pointer; box-shadow: 0 10px 28px rgba(59,130,246,.4), 0 1px 0 rgba(255,255,255,.15) inset; transition: all .22s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 38px rgba(59,130,246,.55); }
+    .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-confirm { width: 100%; padding: 15px 24px; background: linear-gradient(135deg,#15803d,#22c55e); border: none; border-radius: 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: white; cursor: pointer; box-shadow: 0 10px 28px rgba(34,197,94,.4); transition: all .22s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-confirm:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-confirm:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Notification dot */
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 7px #ef4444; animation: breathe 1.5s ease-in-out infinite; }
+
+    /* Status badge */
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .s-sent { background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.3); color: #93c5fd; }
+    .s-notified { background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3); color: #fde68a; }
+    .s-assigned { background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.3); color: #c4b5fd; }
+    .s-enroute { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; }
+    .s-pickedup { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+    .s-delivered { background: rgba(34,197,94,.2); border: 1px solid rgba(34,197,94,.5); color: #4ade80; }
+
+    /* History item */
+    .hist-item { padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.08); margin-bottom: 8px; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(0,12,28,.96); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 13px 20px; font-size: 13px; color: rgba(255,255,255,.92); display: flex; align-items: center; gap: 10px; transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .3s; opacity: 0; z-index: 9000; max-width: 360px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Spinner */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.25); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .75; } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 2px; }
+
+    /* Section animations */
+    .s1 { animation: fadeUp .65s .04s ease both; }
+    .s2 { animation: fadeUp .65s .13s ease both; }
+    .s3 { animation: fadeUp .65s .22s ease both; }
+    .s4 { animation: fadeUp .65s .31s ease both; }
+    .s5 { animation: fadeUp .65s .40s ease both; }
+    .s6 { animation: fadeUp .65s .49s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body style="background:radial-gradient(ellipse at 30% 20%,#001030 0%,#000d1a 60%,#000818 100%);">
+
+<!-- BG Orbs -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="absolute rounded-full animate-float" style="width:420px;height:420px;background:rgba(29,78,216,.18);top:-120px;right:-80px;filter:blur(80px);"></div>
+  <div class="absolute rounded-full animate-float-slow" style="width:320px;height:320px;background:rgba(245,200,35,.07);bottom:-80px;left:-60px;filter:blur(80px);"></div>
+  <div class="absolute inset-0 opacity-[.035]" style="background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);background-size:40px 40px;"></div>
+</div>
+
+<div class="relative z-10 min-h-screen flex flex-col items-center px-4 pb-12">
+
+  <!-- TOP NAV -->
+  <nav class="w-full max-w-[640px] flex items-center justify-between pt-5 pb-0 mb-6 s1">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="border:1.5px solid rgba(245,200,35,.5);background:rgba(245,200,35,.1);">
+        <svg class="w-4 h-4" fill="rgba(245,200,35,.9)" viewBox="0 0 24 24"><path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5 5.2 3 6.5 3 9c0 2 1.5 3.5 3.5 3.5H17c2 0 4-1.5 4-4 0-2-1.5-3.5-3.5-3.5-.5 0-1 .1-1.5.3C15 3.2 13.5 2 12 2z"/></svg>
+      </div>
+      <div>
+        <div class="text-[10px] tracking-[.18em] uppercase" style="color:rgba(245,200,35,.7);">Nestlé Lanka PLC · Pannala</div>
+        <div class="text-[13px] font-semibold tracking-[.04em]">Main Center Operator</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="connBadge" class="text-[9px] px-2.5 py-1 rounded-full font-semibold tracking-[.1em] uppercase" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24;">Connecting…</div>
+      <div id="userAvatar" class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);border:1.5px solid rgba(255,255,255,.18);">M</div>
+      <button id="logoutBtn" class="text-[10px] px-3 py-1.5 rounded-lg" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- PAGE HEADER -->
+  <div class="w-full max-w-[640px] mb-5 s2">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 30px 80px rgba(0,0,0,.45);">
+      <div class="px-6 pt-6 pb-5" style="border-bottom:1px solid rgba(255,255,255,.09);background:linear-gradient(135deg,rgba(245,200,35,.07),transparent 60%);">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              <div class="w-6 h-px" style="background:rgba(245,200,35,.7);"></div>
+              <span class="text-[9px] tracking-[.22em] uppercase font-semibold" style="color:rgba(245,200,35,.8);">Nestlé Main Center · Pannala · 7.5918°N 80.0161°E</span>
+            </div>
+            <h1 class="font-serif text-[30px] font-light leading-tight">Milk Request<br>Control Panel</h1>
+            <p class="text-[12px] mt-1.5 font-light" style="color:rgba(255,255,255,.45);">Request milk from chilling centers and manage all deliveries to Pannala</p>
+          </div>
+          <div class="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0" style="background:rgba(245,200,35,.12);border:1px solid rgba(245,200,35,.25);">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="rgba(245,200,35,.9)" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND REQUEST FORM -->
+  <div class="w-full max-w-[640px] s3">
+    <div class="glass shimmer rounded-[22px] overflow-hidden mb-5" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.25);">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </div>
+          <span class="text-[12px] font-semibold tracking-[.06em]">Send Milk Request</span>
+        </div>
+
+        <div class="f-label">Select Chilling Center</div>
+        <div class="relative mb-4">
+          <select id="centerSelect" class="styled-select">
+            <option value="">Loading chilling centers…</option>
+          </select>
+          <svg class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,.4)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+
+        <div class="f-label">Required Volume</div>
+        <div class="relative mb-5">
+          <input id="litreInput" type="number" min="50" max="5000" step="50" placeholder="Enter litres required…" class="num-input">
+          <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-medium pointer-events-none" style="color:rgba(255,255,255,.35);">L</span>
+        </div>
+
+        <button id="sendRequestBtn" class="btn-primary" disabled>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z"/></svg>
+          Send Request to Chilling Center
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUEST STATUS TRACKER (Active Requests) -->
+  <div class="w-full max-w-[640px] s4">
+    <div class="glass shimmer rounded-[22px] overflow-hidden mb-5" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-2">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.25);">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+            </div>
+            <span class="text-[12px] font-semibold">Pending Requests</span>
+            <div id="activeCount" class="hidden text-[9px] px-2 py-0.5 rounded-full font-bold" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fbbf24;">0 pending</div>
+          </div>
+          <span class="text-[9px] tracking-[.1em] uppercase font-medium" style="color:rgba(255,255,255,.3);">Real-time</span>
+        </div>
+        <div id="centerIncidentBanner"
+          style="display:none;padding:10px 14px;border-radius:10px;border:1px solid;font-size:11px;margin-bottom:10px;font-weight:500;line-height:1.5;">
+        </div>
+        <div id="activeRequestsList">
+          <div class="text-center py-8 text-[12px]" style="color:rgba(255,255,255,.3);">No active requests. Use the form above to send one.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELIVERY CONFIRMATION PANEL -->
+  <div id="confirmPanel" class="w-full max-w-[640px] s5 hidden">
+    <div class="rounded-[22px] overflow-hidden mb-5" style="background:rgba(34,197,94,.08);border:1.5px solid rgba(34,197,94,.35);box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-5">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="notif-dot"></div>
+          <span class="text-[12px] font-semibold" style="color:#4ade80;">Milk En Route — Confirm When Received</span>
+        </div>
+        <p id="confirmDesc" class="text-[12px] mb-4" style="color:rgba(255,255,255,.6);">Driver is at the gate. Confirm receipt to complete the delivery and notify the Fleet Manager.</p>
+        <button id="confirmDeliveryBtn" class="btn-confirm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          Confirm Delivery Received
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUEST HISTORY -->
+  <div class="w-full max-w-[640px] s6">
+    <div class="glass shimmer rounded-[22px] overflow-hidden" style="box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div class="px-6 pt-5 pb-4">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-7 h-7 rounded-[9px] flex items-center justify-center" style="background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#a78bfa" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m4-2a8 8 0 11-16 0 8 8 0 0116 0z"/></svg>
+          </div>
+          <span class="text-[12px] font-semibold">Trip History</span>
+        </div>
+        <div id="historyList">
+          <div class="text-center py-8 text-[12px]" style="color:rgba(255,255,255,.3);">No trips yet. Requests appear here once a driver is dispatched.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  /* ── Firebase Init ── */
+  const FB = {
+    apiKey: "AIzaSyDtTMrEGjIJ5aJYNJQnARXxXrJDnEUt4vM",
+    authDomain: "rural-logistics-app.firebaseapp.com",
+    databaseURL: "https://rural-logistics-app-default-rtdb.firebaseio.com",
+    projectId: "rural-logistics-app",
+    storageBucket: "rural-logistics-app.firebasestorage.app",
+    messagingSenderId: "684830139102",
+    appId: "1:684830139102:web:850e4e5802aac76335584f"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(FB);
+  const db   = firebase.database();
+  const auth = firebase.auth();
+
+  /* ── Connection badge ── */
+  db.ref('.info/connected').on('value', s => {
+    const el = document.getElementById('connBadge');
+    if (s.val()) { el.textContent = 'Live'; el.style.background = 'rgba(34,197,94,.12)'; el.style.borderColor = 'rgba(34,197,94,.35)'; el.style.color = '#4ade80'; }
+    else         { el.textContent = 'Offline'; el.style.background = 'rgba(240,80,80,.12)'; el.style.borderColor = 'rgba(240,80,80,.3)'; el.style.color = '#f87171'; }
+  });
+
+  /* ── Toast ── */
+  let _toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  /* ── Center name map (kept for backwards-compat with old requests) ── */
+  const CENTER_NAMES = {
+    apiit:      'APIIT Sri Lanka',
+    townhall:   'Colombo Town Hall',
+    kaduwela:   'Kaduwela Rural Farm',
+    hanwella:   'Hanwella Dairy Co-op',
+    malabe:     'Malabe Collection Hub',
+    welewatta:  'Welewatta Collection Center'
+  };
+
+  /* ── Legacy hardcoded centers (match dashboard.html COLLECTION_CENTERS) ── */
+  const LEGACY_CENTERS = [
+    { id: 'apiit',     name: 'APIIT Sri Lanka' },
+    { id: 'townhall',  name: 'Colombo Town Hall' },
+    { id: 'kaduwela',  name: 'Kaduwela Rural Farm' },
+    { id: 'hanwella',  name: 'Hanwella Dairy Co-op' },
+    { id: 'malabe',    name: 'Malabe Collection Hub' },
+    { id: 'welewatta', name: 'Welewatta Collection Center' }
+  ];
+
+  /* ── Load registered chilling centers from Firebase ── */
+  async function loadChillingCenters() {
+    const sel = document.getElementById('centerSelect');
+    sel.innerHTML = '<option value="">Loading chilling centers…</option>';
+    try {
+      const snap = await db.ref('chilling_centers').once('value');
+      const data = snap.val() || {};
+      const centers = Object.entries(data);
+      sel.innerHTML = '<option value="">— Choose a chilling center —</option>';
+      // Firebase-registered centers first (use UID key, so notifications route correctly)
+      centers.forEach(([uid, c]) => {
+        const opt = document.createElement('option');
+        opt.value = uid;
+        opt.textContent = c.name;
+        opt.dataset.centerName = c.name;
+        sel.appendChild(opt);
+      });
+      // Legacy hardcoded centers always appended below
+      LEGACY_CENTERS.forEach(lc => {
+        const opt = document.createElement('option');
+        opt.value = lc.id;
+        opt.textContent = lc.name;
+        opt.dataset.centerName = lc.name;
+        sel.appendChild(opt);
+      });
+    } catch (e) {
+      sel.innerHTML = '<option value="">— Error loading centers —</option>';
+    }
+    validateForm();
+  }
+
+  /* ── Status steps config ── */
+  const STEPS = [
+    { key: 'SENT',            label: 'Sent' },
+    { key: 'NOTIFIED',        label: 'Center\nNotified' },
+    { key: 'DRIVER_ASSIGNED', label: 'Driver\nAssigned' },
+    { key: 'DRIVER_EN_ROUTE', label: 'En Route' },
+    { key: 'PICKED_UP',       label: 'Picked Up' },
+    { key: 'DELIVERED',       label: 'Delivered' }
+  ];
+
+  function stepIndex(status) {
+    return STEPS.findIndex(s => s.key === status);
+  }
+
+  function statusBadgeHtml(status) {
+    const cls = {
+      SENT:            's-sent',
+      NOTIFIED:        's-notified',
+      DRIVER_ASSIGNED: 's-assigned',
+      DRIVER_EN_ROUTE: 's-enroute',
+      PICKED_UP:       's-pickedup',
+      DELIVERED:       's-delivered'
+    }[status] || 's-sent';
+    const label = (status || 'SENT').replace(/_/g, ' ');
+    return `<span class="status-badge ${cls}">${label}</span>`;
+  }
+
+  function buildStepper(currentStatus) {
+    const cur = stepIndex(currentStatus);
+    let html = '<div class="step-track flex items-end gap-0 mb-4">';
+    STEPS.forEach((s, i) => {
+      const isDone   = i < cur;
+      const isActive = i === cur;
+      const circle   = isDone ? '✓' : (i + 1);
+      const cc       = isDone ? 'done' : (isActive ? 'active' : '');
+      const lc       = isDone ? 'done' : (isActive ? 'active' : '');
+      html += `
+        <div class="step-node">
+          <div class="step-circle ${cc}">${circle}</div>
+          <div class="step-label ${lc}" style="white-space:pre-line;">${s.label}</div>
+        </div>`;
+      if (i < STEPS.length - 1) {
+        html += `<div class="step-line ${isDone ? 'done' : ''}"></div>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /* ── Build active request card HTML ── */
+  function buildReqCard(id, req) {
+    const arriving = req.status === 'PICKED_UP' && !req.confirmedByNestle;
+    const cls = req.status === 'DELIVERED' ? 'delivered' : (arriving ? 'active-req' : '');
+    return `
+      <div class="req-card ${cls} mb-4 animate-slide-in" data-id="${id}">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <div class="text-[13px] font-semibold">${req.centerName || CENTER_NAMES[req.centerId] || req.centerId}</div>
+            <div class="text-[11px] mt-0.5" style="color:rgba(255,255,255,.45);">${req.litres} L requested · ${new Date(req.timestamp).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          ${statusBadgeHtml(req.status)}
+        </div>
+        ${buildStepper(req.status)}
+        ${req.driverName ? `<div class="text-[11px] mt-1" style="color:rgba(255,255,255,.45);">Driver: <span style="color:rgba(255,255,255,.75);font-weight:500;">${req.driverName}</span></div>` : ''}
+        ${arriving ? `<div class="mt-3 px-3 py-2 rounded-xl text-[11px] font-semibold" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;">⚡ Driver en route — confirm receipt when milk arrives at gate</div>` : ''}
+      </div>`;
+  }
+
+  /* ── State ── */
+  let activeRequests = {};
+  let historicalRequests = {};
+  let pendingConfirmId = null;
+  let liveDispatch = null;   // real-time snapshot from dispatches/active
+  let myUid = null;
+
+  /* ── Map live dispatch status → milk_request step ── */
+  function liveDispatchStatusToMilkStatus(ds) {
+    return ({
+      DISPATCHED:         'DRIVER_ASSIGNED',
+      DRIVER_ACCEPTED:    'DRIVER_ASSIGNED',
+      EN_ROUTE:           'DRIVER_EN_ROUTE',
+      APPROACHING:        'DRIVER_EN_ROUTE',
+      ARRIVED:            'DRIVER_EN_ROUTE',
+      MILK_COLLECTED:     'PICKED_UP',
+      EN_ROUTE_TO_NESTLE: 'PICKED_UP'
+    })[ds] || null;
+  }
+
+  /* ── Rich history card (ongoing + delivered) ── */
+  function buildHistoryCard(id, req) {
+    const isDelivered = req.status === 'DELIVERED';
+    const cn = req.centerName || CENTER_NAMES[req.centerId] || req.centerId;
+    const reqTime = new Date(req.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const delivTime = req.deliveredAt
+      ? new Date(req.deliveredAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : null;
+    const dn = (req.driverName || '').trim();
+    return `
+      <div class="hist-item ${isDelivered ? 'delivered' : 'active-req'} mb-2">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex-1 min-w-0 pr-2">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              ${!isDelivered ? '<span class="notif-dot flex-shrink-0" style="width:6px;height:6px;animation:breathe 2s ease-in-out infinite;"></span>' : ''}
+              <span class="text-[13px] font-semibold truncate">${cn}</span>
+            </div>
+            <div class="text-[11px]" style="color:rgba(255,255,255,.4);">${req.litres} L · Sent ${reqTime}</div>
+            ${dn ? `<div class="text-[11px] mt-0.5" style="color:rgba(255,255,255,.45);">Driver: <span style="color:rgba(255,255,255,.75);font-weight:500;">${dn}</span></div>` : ''}
+            ${delivTime ? `<div class="text-[11px] mt-0.5" style="color:#4ade80;">Delivered ${delivTime}</div>` : ''}
+          </div>
+          ${statusBadgeHtml(req.status)}
+        </div>
+        ${!isDelivered ? buildStepper(req.status) : ''}
+      </div>`;
+  }
+
+  /* ── Render pending requests (SENT / NOTIFIED only — awaiting FM dispatch) ── */
+  function renderActive() {
+    const list = document.getElementById('activeRequestsList');
+    const badge = document.getElementById('activeCount');
+    const pending = Object.entries(activeRequests).filter(([,r]) => r.status === 'SENT' || r.status === 'NOTIFIED');
+    badge.textContent = pending.length + ' pending';
+    badge.classList.toggle('hidden', !pending.length);
+
+    if (!pending.length) {
+      list.innerHTML = '<div class="text-center py-6 text-[12px]" style="color:rgba(255,255,255,.3);">No pending requests. Dispatched trips appear in Trip History below.</div>';
+      return;
+    }
+    list.innerHTML = pending.map(([id, req]) => buildReqCard(id, req)).join('');
+  }
+
+  /* ── Render trip history (all dispatched + delivered trips, sorted newest-first) ── */
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const all = { ...activeRequests, ...historicalRequests };
+
+    const trips = Object.entries(all)
+      .filter(([, r]) => r.status !== 'SENT' && r.status !== 'NOTIFIED')
+      .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
+      .slice(0, 40);
+
+    if (!trips.length) {
+      list.innerHTML = '<div class="text-center py-8 text-[12px]" style="color:rgba(255,255,255,.3);">No trips yet. Requests appear here once a driver is dispatched.</div>';
+      return;
+    }
+
+    list.innerHTML = trips.map(([id, req]) => {
+      // Overlay real-time driver status for the currently active dispatch
+      const isLive = liveDispatch && liveDispatch.request_id === id;
+      let displayStatus = req.status;
+      let displayDriver = req.driverName;
+      if (isLive) {
+        const mapped = liveDispatchStatusToMilkStatus(liveDispatch.status);
+        if (mapped) displayStatus = mapped;
+        if (!displayDriver && liveDispatch.assigned_driver_name) displayDriver = liveDispatch.assigned_driver_name;
+      }
+      return buildHistoryCard(id, { ...req, status: displayStatus, driverName: displayDriver });
+    }).join('');
+  }
+
+  /* ── Check for deliveries needing confirmation ── */
+  function checkPendingConfirm() {
+    const panel = document.getElementById('confirmPanel');
+    const desc  = document.getElementById('confirmDesc');
+
+    // Primary: milk_requests reached PICKED_UP (driver collected milk, en route to us)
+    const arrivals = Object.entries(activeRequests).filter(([,r]) => r.status === 'PICKED_UP' && !r.confirmedByNestle);
+
+    // Fallback: live dispatch says DELIVERED (driver confirmed at Nestlé) but center hasn't confirmed yet
+    // Covers the case where the dashboard isn't online to mirror the status into milk_requests
+    let liveArrival = null;
+    if (!arrivals.length && liveDispatch && liveDispatch.status === 'DELIVERED' && liveDispatch.request_id) {
+      const lr = activeRequests[liveDispatch.request_id];
+      if (lr && !lr.confirmedByNestle) liveArrival = [liveDispatch.request_id, lr];
+    }
+
+    const target = arrivals.length ? arrivals[0] : liveArrival;
+    if (target) {
+      const [id, req] = target;
+      pendingConfirmId = id;
+      const cn = req.centerName || CENTER_NAMES[req.centerId] || req.centerId;
+      const dn = req.driverName || (liveDispatch && liveDispatch.assigned_driver_name) || '';
+      desc.textContent = `Driver ${dn} has picked up ${req.litres} L from ${cn} and is en route. Confirm receipt when milk arrives at the gate.`;
+      panel.classList.remove('hidden');
+    } else {
+      pendingConfirmId = null;
+      panel.classList.add('hidden');
+    }
+  }
+
+  /* ── Firebase listeners ── */
+  function startListeners() {
+    // All milk requests — sorted by timestamp so newest appear first
+    db.ref('milk_requests').on('value', snap => {
+      const data = snap.val() || {};
+      activeRequests = {};
+      historicalRequests = {};
+      for (const [id, req] of Object.entries(data)) {
+        if (req.status === 'DELIVERED') historicalRequests[id] = req;
+        else activeRequests[id] = req;
+      }
+      renderActive();
+      renderHistory();
+      checkPendingConfirm();
+    });
+
+    // Live dispatch — overlays real-time driver status onto Trip History cards
+    db.ref('dispatches/active').on('value', snap => {
+      liveDispatch = snap.val() || null;
+      renderHistory();
+      checkPendingConfirm();
+      // Show incident / backup status in the UI
+      const incidentBanner = document.getElementById('centerIncidentBanner');
+      if (liveDispatch && liveDispatch.status === 'INCIDENT') {
+        const msg = `⚠ Trip Interrupted — Driver reported an incident at ${new Date(liveDispatch.incident_at || Date.now()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}. Dispatching backup driver…`;
+        if (incidentBanner) {
+          incidentBanner.textContent = msg;
+          incidentBanner.style.display = 'block';
+          incidentBanner.style.background = 'rgba(245,158,11,.12)';
+          incidentBanner.style.borderColor = 'rgba(245,158,11,.35)';
+          incidentBanner.style.color = '#fbbf24';
+        }
+      } else if (liveDispatch && liveDispatch.status === 'BACKUP_EN_ROUTE') {
+        const msg = `✅ Backup driver ${liveDispatch.backup_driver_name || 'assigned'} — continuing delivery.`;
+        if (incidentBanner) {
+          incidentBanner.textContent = msg;
+          incidentBanner.style.display = 'block';
+          incidentBanner.style.background = 'rgba(34,197,94,.08)';
+          incidentBanner.style.borderColor = 'rgba(34,197,94,.3)';
+          incidentBanner.style.color = '#4ade80';
+        }
+      } else {
+        if (incidentBanner) incidentBanner.style.display = 'none';
+      }
+    });
+  }
+
+  /* ── Send Request ── */
+  document.getElementById('centerSelect').addEventListener('change', validateForm);
+  document.getElementById('litreInput').addEventListener('input', validateForm);
+  function validateForm() {
+    const c = document.getElementById('centerSelect').value;
+    const l = parseInt(document.getElementById('litreInput').value);
+    document.getElementById('sendRequestBtn').disabled = !c || !l || l < 50;
+  }
+
+  document.getElementById('sendRequestBtn').addEventListener('click', async () => {
+    const sel        = document.getElementById('centerSelect');
+    const centerId   = sel.value;
+    const litres     = parseInt(document.getElementById('litreInput').value);
+    const centerName = sel.options[sel.selectedIndex]?.dataset?.centerName
+                     || sel.options[sel.selectedIndex]?.text
+                     || CENTER_NAMES[centerId]
+                     || centerId;
+    if (!centerId || !litres) return;
+
+    const btn = document.getElementById('sendRequestBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Sending…`;
+
+    try {
+      const ref = db.ref('milk_requests').push();
+      const requestId = ref.key;
+      const payload = {
+        centerId, centerName, litres,
+        status: 'SENT',
+        timestamp: Date.now(),
+        requestedBy: myUid || 'operator',
+        driverUid: null,
+        driverName: null,
+        confirmedByNestle: false
+      };
+      await ref.set(payload);
+
+      // Notify chilling center manager (real-time)
+      await db.ref(`chilling_center_notifications/${centerId}`).push({
+        type: 'MILK_REQUEST',
+        requestId,
+        message: `Nestlé Pannala requests ${litres} L of milk`,
+        litres,
+        timestamp: Date.now(),
+        read: false
+      });
+
+      // Update status to NOTIFIED
+      await db.ref(`milk_requests/${requestId}/status`).set('NOTIFIED');
+
+      // Notify fleet manager
+      await db.ref('fleet_manager_notifications').push({
+        type: 'NEW_MILK_REQUEST',
+        requestId,
+        centerName,
+        litres,
+        message: `New milk request: ${litres} L from ${centerName}`,
+        timestamp: Date.now(),
+        read: false
+      });
+
+      showToast(`Request sent to ${centerName} — Fleet Manager notified`);
+      document.getElementById('centerSelect').value = '';
+      document.getElementById('litreInput').value = '';
+      validateForm();
+    } catch (err) {
+      showToast('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z"/></svg>Send Request to Chilling Center`;
+      validateForm();
+    }
+  });
+
+  /* ── Confirm Delivery ── */
+  document.getElementById('confirmDeliveryBtn').addEventListener('click', async () => {
+    if (!pendingConfirmId) return;
+    const btn = document.getElementById('confirmDeliveryBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<div class="spinner"></div> Confirming…`;
+
+    try {
+      const req = activeRequests[pendingConfirmId];
+      const now = Date.now();
+
+      // Mark delivered in milk_requests
+      await db.ref(`milk_requests/${pendingConfirmId}`).update({
+        status: 'DELIVERED',
+        confirmedByNestle: true,
+        deliveredAt: now,
+        confirmedByNestleAt: now
+      });
+
+      // Notify fleet manager
+      await db.ref('fleet_manager_notifications').push({
+        type: 'DELIVERY_CONFIRMED',
+        requestId: pendingConfirmId,
+        centerName: req ? (req.centerName || CENTER_NAMES[req.centerId] || req.centerId) : '',
+        litres: req ? req.litres : 0,
+        driverName: req ? req.driverName : null,
+        message: `Delivery confirmed at Nestlé Pannala — ${req ? req.litres + ' L from ' + (req.centerName || CENTER_NAMES[req.centerId] || req.centerId) : ''}`,
+        timestamp: now,
+        read: false
+      });
+
+      // Also write to dispatch_events ledger for FM dashboard
+      await db.ref('dispatch_events').push({
+        type: 'DELIVERED',
+        center_name: req ? (req.centerName || CENTER_NAMES[req.centerId] || req.centerId) : '',
+        driver_name: req ? req.driverName : null,
+        nestle_hub: 'Nestlé Main Center — Pannala',
+        timestamp: now
+      });
+
+      showToast('Delivery confirmed ✓ Fleet Manager notified');
+      document.getElementById('confirmPanel').classList.add('hidden');
+      pendingConfirmId = null;
+    } catch (err) {
+      showToast('Error: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>Confirm Delivery Received`;
+    }
+  });
+
+  /* ── Auth ── */
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    auth.signOut().then(() => location.href = 'login.html');
+  });
+
+  auth.onAuthStateChanged(user => {
+    if (!user) { location.href = 'login.html'; return; }
+    myUid = user.uid;
+    const initials = (user.email || 'OP').slice(0, 2).toUpperCase();
+    document.getElementById('userAvatar').textContent = initials;
+    loadChillingCenters();
+    startListeners();
+  });
+</script>
+</body>
+</html>

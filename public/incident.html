@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Incident Reports | Nestlé Smart Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans:['DM Sans','sans-serif'], serif:['Cormorant Garamond','serif'] },
+          animation: {
+            'float': 'float 8s ease-in-out infinite',
+            'float-slow': 'float 11s ease-in-out infinite 3s',
+            'fade-in': 'fadeIn .6s ease both',
+          },
+          keyframes: {
+            float: {'0%,100%':{transform:'translateY(0)'},'50%':{transform:'translateY(-18px)'}},
+            fadeIn: {'0%':{opacity:'0',transform:'translateY(15px)'},'100%':{opacity:'1',transform:'translateY(0)'}},
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background:radial-gradient(ellipse at 20% 10%,#001e3c 0%,#000d1a 60%,#001020 100%); color:rgba(255,255,255,.92); }
+    .glass { background:rgba(255,255,255,.05); backdrop-filter:blur(24px) saturate(1.4); -webkit-backdrop-filter:blur(24px) saturate(1.4); border:1px solid rgba(255,255,255,.1); box-shadow:0 10px 40px rgba(0,0,0,.3); }
+    .glass-light { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:3px; }
+    
+    .sev-critical { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.1); }
+    .sev-critical .badge { background: rgba(239,68,68,.2); color: #f87171; border: 1px solid rgba(239,68,68,.4); }
+    
+    .sev-major { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.05); }
+    .sev-major .badge { background: rgba(245,158,11,.2); color: #fbbf24; border: 1px solid rgba(245,158,11,.4); }
+    
+    .sev-minor { border-color: rgba(96,165,250,.4); background: rgba(96,165,250,.05); }
+    .sev-minor .badge { background: rgba(96,165,250,.15); color: #60a5fa; border: 1px solid rgba(96,165,250,.3); }
+    
+    .image-preview { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .image-preview:hover { transform: scale(1.02); box-shadow: 0 10px 25px rgba(0,0,0,.5); cursor: pointer; }
+    
+    /* MODAL STYLES */
+    #imageModal { backdrop-filter: blur(15px); transition: opacity 0.3s ease; }
+    #imageModal.hidden { opacity: 0; pointer-events: none; display: none; }
+    #imageModal:not(.hidden) { opacity: 1; display: flex; }
+  </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden font-sans text-white">
+  <!-- BG Orbs -->
+  <div class="fixed inset-0 pointer-events-none z-0">
+    <div class="absolute rounded-full animate-float" style="width:500px;height:500px;background:rgba(239,68,68,.1);top:-150px;right:-100px;filter:blur(90px);"></div>
+    <div class="absolute rounded-full animate-float-slow" style="width:400px;height:400px;background:rgba(245,158,11,.08);bottom:0;left:-100px;filter:blur(100px);"></div>
+    <div class="absolute inset-0 opacity-[.03]" style="background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);background-size:40px 40px;"></div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <nav class="relative z-20 flex items-center justify-between px-6 py-4 border-b border-white/10 glass-light">
+    <div class="flex items-center gap-4">
+      <button onclick="window.location.href='dashboard.html'" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition">
+        <svg class="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+      </button>
+      <div>
+        <div class="text-[10px] tracking-[.2em] text-white/40 uppercase">Nestlé Command Centre</div>
+        <div class="font-serif tracking-wide text-xl font-light">Incident Explorer</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="loadingIndicator" class="hidden text-xs text-blue-400 animate-pulse">Syncing...</div>
+      <div class="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-400/40 flex items-center justify-center text-xs font-bold text-blue-400">M</div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="relative z-10 max-w-5xl mx-auto px-6 py-10">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-serif font-light mb-2">Driver Incident Evidence</h1>
+        <p class="text-white/50 text-sm">Real-time reports of road condition issues, traffic, and emergency incidents.</p>
+      </div>
+      <div class="px-4 py-2 rounded-full glass flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+        <span class="text-xs tracking-wider text-green-400 font-medium">LIVE SYSTEM UPDATE</span>
+      </div>
+    </div>
+    
+    <div id="emptyState" class="hidden glass rounded-3xl p-16 text-center">
+      <div class="w-20 h-20 rounded-full mx-auto bg-white/5 flex items-center justify-center mb-6">
+        <svg class="w-10 h-10 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <h3 class="text-xl font-light mb-2 text-white/80">No Incident Reports</h3>
+      <p class="text-white/40 text-sm">There are no road reports or incident evidence uploaded yet.</p>
+    </div>
+
+    <div id="incidentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Cards injected by JS -->
+    </div>
+  </main>
+
+  <!-- FULL SCREEN IMAGE MODAL -->
+  <div id="imageModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4">
+    <div class="relative max-w-4xl w-full flex justify-center">
+      <button id="closeModalBtn" class="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition backdrop-blur-md">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+      <img id="modalImg" src="" class="max-h-[85vh] rounded-xl object-contain border border-white/10 shadow-2xl" alt="Evidence Full">
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDtTMrEGjIJ5aJYNJQnARXxXrJDnEUt4vM",
+      authDomain: "rural-logistics-app.firebaseapp.com",
+      databaseURL: "https://rural-logistics-app-default-rtdb.firebaseio.com",
+      projectId: "rural-logistics-app",
+      storageBucket: "rural-logistics-app.firebasestorage.app",
+      messagingSenderId: "684830139102",
+      appId: "1:684830139102:web:850e4e5802aac76335584f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    // Auth Protection
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = 'index.html';
+      }
+    });
+
+    const grid = document.getElementById('incidentsGrid');
+    const emptyState = document.getElementById('emptyState');
+    const loadIndicator = document.getElementById('loadingIndicator');
+    
+    // Modal Logic
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImg');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    
+    const openModal = (url) => {
+      modalImg.src = url;
+      modal.classList.remove('hidden');
+    };
+    
+    closeModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) modal.classList.add('hidden');
+    });
+
+    // Utilities
+    const timeAgo = (ts) => {
+      const diff = Math.floor((Date.now() - ts) / 1000);
+      if(diff < 60) return `Just now`;
+      if(diff < 3600) return `${Math.floor(diff/60)}m ago`;
+      if(diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+      return `${Math.floor(diff/86400)}d ago`;
+    };
+
+    const getSeverityClass = (sev) => {
+      sev = (sev || '').toLowerCase();
+      if(sev.includes('high') || sev.includes('critical')) return 'sev-critical';
+      if(sev.includes('medium') || sev.includes('moderate')) return 'sev-major';
+      return 'sev-minor';
+    };
+
+    const formatDate = (ts) => {
+      return new Date(ts).toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    };
+
+    // DB Listener - Merge road_reports and logs/incidents
+    let roadReports = {};
+    let emergencyIncidents = {};
+
+    function updateGrid() {
+      loadIndicator.classList.remove('hidden');
+      
+      const allReports = [
+        ...Object.values(roadReports).map(r => ({ ...r, source: 'road' })),
+        ...Object.values(emergencyIncidents).map(r => ({
+          ...r,
+          source: 'emergency',
+          issue_type: r.type || 'EMERGENCY SOS',
+          severity: 'Critical',
+          note: r.note || `Emergency distress signal received from driver ${r.driver || 'Unknown'}.`,
+          driver_name: r.driver || 'Unknown'
+        }))
+      ];
+
+      grid.innerHTML = '';
+      
+      if (allReports.length === 0) {
+        emptyState.classList.remove('hidden');
+        loadIndicator.classList.add('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      // Sort newest first
+      allReports.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      // Limit to 30 most recent for performance
+      const displayReports = allReports.slice(0, 30);
+
+      displayReports.forEach((report, index) => {
+        const sevClass = getSeverityClass(report.severity);
+        const card = document.createElement('div');
+        card.className = `glass rounded-2xl p-5 border-l-4 ${sevClass} flex flex-col h-full animate-fade-in`;
+        card.style.animationDelay = `${index * 0.05}s`;
+
+        const hasImg = report.has_photo && report.photo_url;
+        const isEmergency = report.source === 'emergency';
+        const hasLocation = report.lat !== undefined && report.lng !== undefined;
+        
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <span class="badge px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full">
+              ${isEmergency ? '🚨 SOS' : (report.severity || 'Unknown')}
+            </span>
+            <span class="text-[11px] text-white/40">${timeAgo(report.timestamp)}</span>
+          </div>
+
+          <h3 class="text-lg font-medium mb-1 uppercase tracking-wide ${isEmergency ? 'text-red-400' : 'text-white/90'}">
+            ${report.issue_type || (report.type === 'BACKUP_DISPATCHED' ? 'Backup Deployed' : 'General Report')}
+          </h3>
+          <p class="text-white/60 text-xs mb-4 flex-1">${report.note || report.location || 'No additional details provided.'}</p>
+
+          ${hasImg ? `
+            <div class="relative w-full h-32 rounded-lg overflow-hidden mb-4 border border-white/10 image-preview group">
+              <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition z-10 pointer-events-none"></div>
+              <img src="${report.photo_url}" class="w-full h-full object-cover" alt="Evidence" loading="lazy" />
+              <div class="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[9px] text-white z-20 pointer-events-none border border-white/10">View Image</div>
+            </div>
+          ` : isEmergency ? `
+            <div class="w-full h-24 rounded-lg border border-red-500/20 bg-red-500/5 flex flex-col items-center justify-center mb-4 text-red-400/60 gap-1">
+              <svg class="w-6 h-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <span class="text-[10px] font-bold uppercase tracking-widest">Incident Event Logged</span>
+            </div>
+          ` : `
+            <div class="w-full h-12 rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center justify-center mb-4 text-white/30 text-xs">
+              No Evidence Found
+            </div>
+          `}
+
+          <div class="bg-black/20 rounded-xl p-3 border border-white/5 mt-auto">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-[9px] flex items-center justify-center font-bold border border-blue-400/30">
+                ${(report.driver_name || report.driver || 'U')[0].toUpperCase()}
+              </div>
+              <p class="text-xs text-white/80"><span class="text-white/40">Driver:</span> ${report.driver_name || report.driver || 'System Control'}</p>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-white/40 border-t border-white/5 pt-2">
+              ${hasLocation ? `
+                <a href="https://www.google.com/maps?q=${report.lat},${report.lng}" target="_blank" class="hover:text-blue-400 flex items-center gap-1 transition">
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Location
+                </a>
+              ` : `
+                <span class="flex items-center gap-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Remote</span>
+              `}
+              <span>${formatDate(report.timestamp)}</span>
+            </div>
+          </div>
+        `;
+
+        if(hasImg) {
+          const imgPreview = card.querySelector('.image-preview');
+          imgPreview.addEventListener('click', () => openModal(report.photo_url));
+        }
+
+        grid.appendChild(card);
+      });
+
+      setTimeout(() => loadIndicator.classList.add('hidden'), 500);
+    }
+
+    // Listen to road reports (limit to 50 for performance)
+    onValue(query(ref(db, 'road_reports'), limitToLast(50)), snapshot => {
+      roadReports = snapshot.val() || {};
+      updateGrid();
+    });
+
+    // Listen to emergency incidents
+    onValue(query(ref(db, 'logs/incidents'), limitToLast(20)), snapshot => {
+      emergencyIncidents = snapshot.val() || {};
+      updateGrid();
+    });
+  </script>
+</body>
+</html>
